@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import { Calendar, Mail, Phone, MapPin, Facebook, Instagram, Twitter } from "lucide-react";
+import { Mail, Phone, MapPin, Facebook, Instagram, Twitter } from "lucide-react";
+import logo from "@/assets/logo.png";
 
 export function Footer() {
   return (
@@ -9,11 +10,9 @@ export function Footer() {
           {/* Brand */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-primary">
-                <Calendar className="h-5 w-5 text-primary-foreground" />
-              </div>
+              <img src={logo} alt="The Pickle Box" className="h-10 w-auto" />
               <span className="text-xl font-bold">
-                Pickle<span className="text-sidebar-primary">Court</span>
+                The Pickle <span className="text-sidebar-primary">Box</span>
               </span>
             </div>
             <p className="text-sm text-sidebar-foreground/70">
@@ -88,7 +87,7 @@ export function Footer() {
         <div className="mt-12 pt-8 border-t border-sidebar-border">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm text-sidebar-foreground/60">
-              © 2026 PickleCourt Pro. All rights reserved.
+              © 2026 The Pickle Box. All rights reserved.
             </p>
             <div className="flex gap-6">
               <Link to="/privacy" className="text-sm text-sidebar-foreground/60 hover:text-sidebar-primary transition-colors">
