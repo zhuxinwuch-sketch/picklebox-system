@@ -40,9 +40,9 @@ export function CourtsPreview() {
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-12">
           <div>
-            <span className="text-sm font-semibold text-primary uppercase tracking-wider">Featured Courts</span>
+            <span className="text-sm font-semibold text-primary uppercase tracking-wider">Our Courts</span>
             <h2 className="text-3xl md:text-4xl font-bold text-foreground mt-2">
-              Popular Courts Near You
+              The Pickle Box Courts
             </h2>
           </div>
           <Link to="/courts">
@@ -88,7 +88,7 @@ export function CourtsPreview() {
                     <span className="text-2xl font-bold text-foreground">₱{court.price}</span>
                     <span className="text-sm text-muted-foreground">/hour</span>
                   </div>
-                  <Link to={`/courts/${court.id}`}>
+                  <Link to={`/book/${court.id}`}>
                     <Button size="sm" disabled={!court.available}>
                       {court.available ? "Book Now" : "Unavailable"}
                     </Button>
