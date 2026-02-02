@@ -35,7 +35,7 @@ export function HeroSection() {
 
           {/* Description */}
           <p className="text-lg md:text-xl text-muted-foreground mb-8 leading-relaxed">
-            Find and reserve top-rated courts near you. Pay securely with GCash and get instant confirmation. Your next game is just a few taps away.
+            Find and reserve top-rated courts at The Pickle Box. Pay securely with GCash and get instant confirmation. Your next game is just a few taps away.
           </p>
 
           {/* CTA Buttons */}

@@ -1,8 +1,9 @@
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Calendar, User, LogIn } from "lucide-react";
+import { Menu, X, User, LogIn } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import logo from "@/assets/logo.png";
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -20,11 +21,9 @@ export function Navbar() {
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-primary">
-              <Calendar className="h-5 w-5 text-primary-foreground" />
-            </div>
+            <img src={logo} alt="The Pickle Box" className="h-10 w-auto" />
             <span className="text-xl font-bold text-foreground">
-              Pickle<span className="text-primary">Court</span>
+              The Pickle <span className="text-primary">Box</span>
             </span>
           </Link>
 
