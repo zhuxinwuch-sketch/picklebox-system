@@ -1,9 +1,16 @@
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X, User, LogIn } from "lucide-react";
+ import { Menu, X, User, LogIn, LogOut } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/logo.png";
+ import { useAuth } from "@/hooks/useAuth";
+ import {
+   DropdownMenu,
+   DropdownMenuContent,
+   DropdownMenuItem,
+   DropdownMenuTrigger,
+ } from "@/components/ui/dropdown-menu";
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -14,6 +21,11 @@ const navLinks = [
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+   const { user, signOut } = useAuth();
+
+   const handleSignOut = async () => {
+     await signOut();
+   };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-border/50">
@@ -47,14 +59,40 @@ export function Navbar() {
 
           {/* Auth Buttons */}
           <div className="hidden md:flex items-center gap-3">
-            <Button variant="ghost" size="sm">
-              <LogIn className="h-4 w-4 mr-2" />
-              Login
-            </Button>
-            <Button variant="default" size="sm">
-              <User className="h-4 w-4 mr-2" />
-              Sign Up
-            </Button>
+             {user ? (
+               <DropdownMenu>
+                 <DropdownMenuTrigger asChild>
+                   <Button variant="ghost" size="sm">
+                     <User className="h-4 w-4 mr-2" />
+                     {user.user_metadata?.full_name || user.email?.split("@")[0]}
+                   </Button>
+                 </DropdownMenuTrigger>
+                 <DropdownMenuContent align="end">
+                   <DropdownMenuItem asChild>
+                     <Link to="/bookings">My Bookings</Link>
+                   </DropdownMenuItem>
+                   <DropdownMenuItem onClick={handleSignOut}>
+                     <LogOut className="h-4 w-4 mr-2" />
+                     Logout
+                   </DropdownMenuItem>
+                 </DropdownMenuContent>
+               </DropdownMenu>
+             ) : (
+               <>
+                 <Button variant="ghost" size="sm" asChild>
+                   <Link to="/auth">
+                     <LogIn className="h-4 w-4 mr-2" />
+                     Login
+                   </Link>
+                 </Button>
+                 <Button variant="default" size="sm" asChild>
+                   <Link to="/auth">
+                     <User className="h-4 w-4 mr-2" />
+                     Sign Up
+                   </Link>
+                 </Button>
+               </>
+             )}
           </div>
 
           {/* Mobile Menu Toggle */}
@@ -91,14 +129,32 @@ export function Navbar() {
                 </Link>
               ))}
               <div className="flex flex-col gap-2 pt-4 border-t border-border/50">
-                <Button variant="ghost" size="sm" className="justify-start">
-                  <LogIn className="h-4 w-4 mr-2" />
-                  Login
-                </Button>
-                <Button variant="default" size="sm" className="justify-start">
-                  <User className="h-4 w-4 mr-2" />
-                  Sign Up
-                </Button>
+                 {user ? (
+                   <Button
+                     variant="ghost"
+                     size="sm"
+                     className="justify-start"
+                     onClick={handleSignOut}
+                   >
+                     <LogOut className="h-4 w-4 mr-2" />
+                     Logout
+                   </Button>
+                 ) : (
+                   <>
+                     <Button variant="ghost" size="sm" className="justify-start" asChild>
+                       <Link to="/auth" onClick={() => setIsOpen(false)}>
+                         <LogIn className="h-4 w-4 mr-2" />
+                         Login
+                       </Link>
+                     </Button>
+                     <Button variant="default" size="sm" className="justify-start" asChild>
+                       <Link to="/auth" onClick={() => setIsOpen(false)}>
+                         <User className="h-4 w-4 mr-2" />
+                         Sign Up
+                       </Link>
+                     </Button>
+                   </>
+                 )}
               </div>
             </div>
           </div>
