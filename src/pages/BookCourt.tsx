@@ -5,55 +5,39 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, MapPin, Star, Users, Clock, CreditCard, CheckCircle } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ArrowLeft, Users, Clock, CreditCard, CheckCircle } from "lucide-react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { format, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useCourt } from "@/hooks/useCourts";
+import court1Image from "@/assets/court-1.png";
+import court2Image from "@/assets/court-2.png";
+import court3Image from "@/assets/court-3.png";
 
-const courts = [
-  {
-    id: 1,
-    name: "BGC Sports Center",
-    location: "Bonifacio Global City, Taguig",
-    rating: 4.9,
-    reviews: 128,
-    capacity: 4,
-    price: 500,
-    image: "https://images.unsplash.com/photo-1554068865-24cecd4e34b8?w=800&h=500&fit=crop",
-    amenities: ["Indoor", "AC", "Parking", "Shower", "Locker Room"],
-    description: "Premium indoor pickleball courts with state-of-the-art facilities. Features professional-grade surfaces and climate control for optimal playing conditions.",
-  },
-  {
-    id: 2,
-    name: "Makati Arena",
-    location: "Ayala Center, Makati",
-    rating: 4.8,
-    reviews: 95,
-    capacity: 4,
-    price: 600,
-    image: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&h=500&fit=crop",
-    amenities: ["Indoor", "Pro Shop", "Locker Room", "Coaching", "Cafe"],
-    description: "Premier sports facility in the heart of Makati's business district. Perfect for corporate events and competitive play.",
-  },
-];
+const courtImages: Record<string, string> = {
+  "/assets/court-1.png": court1Image,
+  "/assets/court-2.png": court2Image,
+  "/assets/court-3.png": court3Image,
+};
 
 const timeSlots = [
   { time: "06:00 AM", available: true },
   { time: "07:00 AM", available: true },
-  { time: "08:00 AM", available: false },
+  { time: "08:00 AM", available: true },
   { time: "09:00 AM", available: true },
   { time: "10:00 AM", available: true },
-  { time: "11:00 AM", available: false },
+  { time: "11:00 AM", available: true },
   { time: "12:00 PM", available: true },
   { time: "01:00 PM", available: true },
   { time: "02:00 PM", available: true },
-  { time: "03:00 PM", available: false },
+  { time: "03:00 PM", available: true },
   { time: "04:00 PM", available: true },
   { time: "05:00 PM", available: true },
   { time: "06:00 PM", available: true },
-  { time: "07:00 PM", available: false },
+  { time: "07:00 PM", available: true },
   { time: "08:00 PM", available: true },
   { time: "09:00 PM", available: true },
 ];
@@ -62,11 +46,10 @@ const BookCourt = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { data: court, isLoading } = useCourt(id);
   
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
-
-  const court = courts.find((c) => c.id === Number(id)) || courts[0];
 
   const toggleSlot = (time: string) => {
     setSelectedSlots((prev) =>
@@ -76,7 +59,7 @@ const BookCourt = () => {
     );
   };
 
-  const totalPrice = selectedSlots.length * court.price;
+  const totalPrice = selectedSlots.length * (court?.price_per_hour || 0);
 
   const handleProceedToPayment = () => {
     if (!selectedDate || selectedSlots.length === 0) {
@@ -98,62 +81,78 @@ const BookCourt = () => {
     });
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <main className="pt-24 pb-16">
+          <div className="container mx-auto px-4">
+            <Skeleton className="h-8 w-32 mb-6" />
+            <div className="grid lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-2 space-y-6">
+                <Skeleton className="h-80 w-full rounded-2xl" />
+                <Skeleton className="h-96 w-full rounded-2xl" />
+              </div>
+              <Skeleton className="h-96 w-full rounded-2xl" />
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (!court) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <main className="pt-24 pb-16">
+          <div className="container mx-auto px-4 text-center">
+            <h1 className="text-2xl font-bold text-foreground mb-4">Court not found</h1>
+            <Link to="/courts">
+              <Button>Back to Courts</Button>
+            </Link>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  const courtImage = courtImages[court.image_url || ""] || court.image_url || court1Image;
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
       
       <main className="pt-24 pb-16">
         <div className="container mx-auto px-4">
-          {/* Back Button */}
           <Link to="/courts" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors">
             <ArrowLeft className="h-4 w-4" />
             <span>Back to Courts</span>
           </Link>
 
           <div className="grid lg:grid-cols-3 gap-8">
-            {/* Court Details */}
             <div className="lg:col-span-2 space-y-6">
-              {/* Court Image & Info */}
               <div className="rounded-2xl overflow-hidden border border-border bg-card">
                 <div className="relative h-64 md:h-80">
                   <img
-                    src={court.image}
+                    src={courtImage}
                     alt={court.name}
                     className="h-full w-full object-cover"
                   />
-                  <div className="absolute bottom-4 left-4 flex items-center gap-2">
-                    <Badge variant="default" className="text-sm">
-                      <Star className="h-3 w-3 mr-1 fill-current" />
-                      {court.rating}
-                    </Badge>
-                    <Badge variant="secondary">{court.reviews} reviews</Badge>
-                  </div>
                 </div>
                 <div className="p-6">
                   <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">
                     {court.name}
                   </h1>
-                  <div className="flex items-center gap-2 text-muted-foreground mb-4">
-                    <MapPin className="h-4 w-4" />
-                    <span>{court.location}</span>
-                  </div>
-                  <p className="text-muted-foreground leading-relaxed mb-4">
-                    {court.description}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {court.amenities.map((amenity, index) => (
-                      <span
-                        key={index}
-                        className="px-3 py-1 text-sm font-medium bg-muted rounded-lg text-muted-foreground"
-                      >
-                        {amenity}
-                      </span>
-                    ))}
-                  </div>
+                  {court.description && (
+                    <p className="text-muted-foreground leading-relaxed mb-4">
+                      {court.description}
+                    </p>
+                  )}
                 </div>
               </div>
 
-              {/* Date Selection */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -163,7 +162,6 @@ const BookCourt = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="grid md:grid-cols-2 gap-6">
-                    {/* Calendar */}
                     <div>
                       <p className="text-sm font-medium text-foreground mb-3">Choose a Date</p>
                       <Calendar
@@ -175,7 +173,6 @@ const BookCourt = () => {
                       />
                     </div>
 
-                    {/* Time Slots */}
                     <div>
                       <p className="text-sm font-medium text-foreground mb-3">
                         Available Time Slots
@@ -210,7 +207,6 @@ const BookCourt = () => {
               </Card>
             </div>
 
-            {/* Booking Summary */}
             <div className="lg:col-span-1">
               <Card className="sticky top-24">
                 <CardHeader>
@@ -223,7 +219,7 @@ const BookCourt = () => {
                     </div>
                     <div>
                       <p className="font-semibold text-foreground">{court.name}</p>
-                      <p className="text-sm text-muted-foreground">Up to {court.capacity} players</p>
+                      <p className="text-sm text-muted-foreground">Up to 4 players</p>
                     </div>
                   </div>
 
@@ -253,7 +249,7 @@ const BookCourt = () => {
                     )}
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Rate per Hour</span>
-                      <span className="font-medium text-foreground">₱{court.price}</span>
+                      <span className="font-medium text-foreground">₱{court.price_per_hour}</span>
                     </div>
                   </div>
 
