@@ -7,9 +7,10 @@
  import { Label } from "@/components/ui/label";
  import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
  import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
- import { useAuth } from "@/hooks/useAuth";
- import { useToast } from "@/hooks/use-toast";
- import { Loader2 } from "lucide-react";
+  import { useAuth } from "@/hooks/useAuth";
+  import { useToast } from "@/hooks/use-toast";
+  import { Loader2 } from "lucide-react";
+  import { supabase } from "@/integrations/supabase/client";
  
  const Auth = () => {
    const [isLoading, setIsLoading] = useState(false);
@@ -31,21 +32,34 @@
      e.preventDefault();
      setIsLoading(true);
  
-     const { error } = await signIn(loginEmail, loginPassword);
- 
-     if (error) {
-       toast({
-         title: "Login failed",
-         description: error.message,
-         variant: "destructive",
-       });
-     } else {
-       toast({
-         title: "Welcome back!",
-         description: "You have successfully logged in.",
-       });
-       navigate("/");
-     }
+      const { error } = await signIn(loginEmail, loginPassword);
+
+      if (error) {
+        toast({
+          title: "Login failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        // Check if user is admin to redirect accordingly
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: roleData } = await supabase
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", user.id)
+            .eq("role", "admin")
+            .maybeSingle();
+
+          toast({
+            title: "Welcome back!",
+            description: "You have successfully logged in.",
+          });
+          navigate(roleData ? "/admin" : "/");
+        } else {
+          navigate("/");
+        }
+      }
  
      setIsLoading(false);
    };
