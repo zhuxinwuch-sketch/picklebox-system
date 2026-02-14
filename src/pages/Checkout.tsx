@@ -13,6 +13,7 @@ import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useCreateBooking, useCreatePayment } from "@/hooks/useBookings";
+import { supabase } from "@/integrations/supabase/client";
 
 const Checkout = () => {
   const location = useLocation();
@@ -94,6 +95,11 @@ const Checkout = () => {
         amount: bookingData.totalPrice,
         payment_method: "gcash",
       });
+
+      // Send booking confirmation notification (fire and forget)
+      supabase.functions.invoke("send-booking-notification", {
+        body: { bookingId: booking.id, type: "confirmation" },
+      }).catch((err) => console.error("Notification error:", err));
 
       navigate("/confirmation", {
         state: {

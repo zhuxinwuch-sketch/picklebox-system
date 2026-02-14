@@ -37,10 +37,15 @@ const Bookings = () => {
         .update({ status: "cancelled" as any })
         .eq("id", id);
       if (error) throw error;
+      return id;
     },
-    onSuccess: () => {
+    onSuccess: (id) => {
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
       toast({ title: "Booking cancelled" });
+      // Send cancellation notification
+      supabase.functions.invoke("send-booking-notification", {
+        body: { bookingId: id, type: "cancellation" },
+      }).catch((err) => console.error("Notification error:", err));
     },
     onError: (error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
