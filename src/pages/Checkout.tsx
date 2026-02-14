@@ -7,15 +7,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, CreditCard, Shield, Smartphone, CheckCircle, Clock } from "lucide-react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, Navigate } from "react-router-dom";
 import { useState } from "react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { useCreateBooking, useCreatePayment } from "@/hooks/useBookings";
 
 const Checkout = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, loading: authLoading } = useAuth();
+  const createBooking = useCreateBooking();
+  const createPayment = useCreatePayment();
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [formData, setFormData] = useState({
@@ -24,18 +29,28 @@ const Checkout = () => {
     phone: "",
   });
 
-  const bookingData = location.state || {
-    court: { name: "BGC Sports Center", price: 500 },
-    date: new Date(),
-    slots: ["09:00 AM", "10:00 AM"],
-    totalPrice: 1000,
-  };
+  const bookingData = location.state;
+
+  if (authLoading) return null;
+  if (!user) return <Navigate to="/auth" replace />;
+  if (!bookingData?.court || !bookingData?.date || !bookingData?.slots?.length) {
+    return <Navigate to="/courts" replace />;
+  }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({
       ...prev,
       [e.target.name]: e.target.value,
     }));
+  };
+
+  // Convert 12h time slots to 24h for DB storage
+  const convertTo24h = (time12h: string): string => {
+    const [time, modifier] = time12h.split(" ");
+    let [hours, minutes] = time.split(":").map(Number);
+    if (modifier === "PM" && hours !== 12) hours += 12;
+    if (modifier === "AM" && hours === 12) hours = 0;
+    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:00`;
   };
 
   const handleGCashPayment = async () => {
@@ -50,18 +65,50 @@ const Checkout = () => {
 
     setIsProcessing(true);
 
-    // Simulate payment processing
-    setTimeout(() => {
-      setIsProcessing(false);
+    try {
+      // Sort slots and get start/end times
+      const sortedSlots = [...bookingData.slots].sort();
+      const startTime = convertTo24h(sortedSlots[0]);
+      const lastSlot = sortedSlots[sortedSlots.length - 1];
+      // End time is 1 hour after last slot
+      const lastTime24 = convertTo24h(lastSlot);
+      const endHour = parseInt(lastTime24.split(":")[0]) + 1;
+      const endTime = `${endHour.toString().padStart(2, "0")}:00:00`;
+
+      const bookingDate = format(new Date(bookingData.date), "yyyy-MM-dd");
+
+      // Create booking in database
+      const booking = await createBooking.mutateAsync({
+        user_id: user.id,
+        court_id: bookingData.court.id,
+        booking_date: bookingDate,
+        start_time: startTime,
+        end_time: endTime,
+        total_amount: bookingData.totalPrice,
+      });
+
+      // Create payment record
+      await createPayment.mutateAsync({
+        booking_id: booking.id,
+        user_id: user.id,
+        amount: bookingData.totalPrice,
+        payment_method: "gcash",
+      });
+
       navigate("/confirmation", {
         state: {
-          ...bookingData,
-          customerName: formData.fullName,
-          customerEmail: formData.email,
-          referenceNumber: `PC${Date.now().toString().slice(-8)}`,
+          bookingId: booking.id,
         },
       });
-    }, 2000);
+    } catch (error: any) {
+      toast({
+        title: "Booking Failed",
+        description: error.message || "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -70,7 +117,6 @@ const Checkout = () => {
       
       <main className="pt-24 pb-16">
         <div className="container mx-auto px-4 max-w-4xl">
-          {/* Back Button */}
           <button 
             onClick={() => navigate(-1)}
             className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors"
@@ -106,7 +152,6 @@ const Checkout = () => {
           <div className="grid lg:grid-cols-5 gap-8">
             {/* Payment Form */}
             <div className="lg:col-span-3 space-y-6">
-              {/* Customer Information */}
               <Card>
                 <CardHeader>
                   <CardTitle>Customer Information</CardTitle>
@@ -114,40 +159,19 @@ const Checkout = () => {
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="fullName">Full Name *</Label>
-                    <Input
-                      id="fullName"
-                      name="fullName"
-                      placeholder="Juan Dela Cruz"
-                      value={formData.fullName}
-                      onChange={handleInputChange}
-                    />
+                    <Input id="fullName" name="fullName" placeholder="Juan Dela Cruz" value={formData.fullName} onChange={handleInputChange} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email">Email Address *</Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      placeholder="juan@example.com"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                    />
+                    <Input id="email" name="email" type="email" placeholder="juan@example.com" value={formData.email} onChange={handleInputChange} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="phone">Phone Number *</Label>
-                    <Input
-                      id="phone"
-                      name="phone"
-                      type="tel"
-                      placeholder="+63 912 345 6789"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                    />
+                    <Input id="phone" name="phone" type="tel" placeholder="+63 912 345 6789" value={formData.phone} onChange={handleInputChange} />
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Payment Method */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -156,7 +180,6 @@ const Checkout = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* GCash Option */}
                   <div className="relative p-4 rounded-xl border-2 border-primary bg-primary/5 cursor-pointer">
                     <div className="flex items-center gap-4">
                       <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#007DFE]">
@@ -202,9 +225,7 @@ const Checkout = () => {
                     <p className="text-sm font-medium text-foreground">Selected Time Slots:</p>
                     <div className="flex flex-wrap gap-1">
                       {bookingData.slots?.map((slot: string) => (
-                        <Badge key={slot} variant="secondary" className="text-xs">
-                          {slot}
-                        </Badge>
+                        <Badge key={slot} variant="secondary" className="text-xs">{slot}</Badge>
                       ))}
                     </div>
                   </div>

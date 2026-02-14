@@ -13,6 +13,7 @@ import { format, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useCourt } from "@/hooks/useCourts";
+import { useBookedSlots } from "@/hooks/useBookings";
 import court1Image from "@/assets/court-1.png";
 import court2Image from "@/assets/court-2.png";
 import court3Image from "@/assets/court-3.png";
@@ -23,24 +24,19 @@ const courtImages: Record<string, string> = {
   "/assets/court-3.png": court3Image,
 };
 
-const timeSlots = [
-  { time: "06:00 AM", available: true },
-  { time: "07:00 AM", available: true },
-  { time: "08:00 AM", available: true },
-  { time: "09:00 AM", available: true },
-  { time: "10:00 AM", available: true },
-  { time: "11:00 AM", available: true },
-  { time: "12:00 PM", available: true },
-  { time: "01:00 PM", available: true },
-  { time: "02:00 PM", available: true },
-  { time: "03:00 PM", available: true },
-  { time: "04:00 PM", available: true },
-  { time: "05:00 PM", available: true },
-  { time: "06:00 PM", available: true },
-  { time: "07:00 PM", available: true },
-  { time: "08:00 PM", available: true },
-  { time: "09:00 PM", available: true },
+const allTimeSlots = [
+  "06:00 AM", "07:00 AM", "08:00 AM", "09:00 AM", "10:00 AM", "11:00 AM",
+  "12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM", "05:00 PM",
+  "06:00 PM", "07:00 PM", "08:00 PM", "09:00 PM",
 ];
+
+const convertTo24h = (time12h: string): string => {
+  const [time, modifier] = time12h.split(" ");
+  let [hours, minutes] = time.split(":").map(Number);
+  if (modifier === "PM" && hours !== 12) hours += 12;
+  if (modifier === "AM" && hours === 12) hours = 0;
+  return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:00`;
+};
 
 const BookCourt = () => {
   const { id } = useParams();
@@ -50,6 +46,16 @@ const BookCourt = () => {
   
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
+
+  const dateStr = selectedDate ? format(selectedDate, "yyyy-MM-dd") : undefined;
+  const { data: bookedSlots } = useBookedSlots(id, dateStr);
+
+  // Build time slots with availability
+  const bookedStartTimes = new Set(bookedSlots?.map((b) => b.start_time) || []);
+  const timeSlots = allTimeSlots.map((time) => ({
+    time,
+    available: !bookedStartTimes.has(convertTo24h(time)),
+  }));
 
   const toggleSlot = (time: string) => {
     setSelectedSlots((prev) =>
