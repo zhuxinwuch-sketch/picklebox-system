@@ -6,12 +6,23 @@ import {
   Calendar,
   CreditCard,
   MapPin,
-  Users,
-  ArrowUpRight,
 } from "lucide-react";
 import { useAdminBookings } from "@/hooks/useAdmin";
 import { useAllCourts } from "@/hooks/useCourts";
-import { format } from "date-fns";
+import { format, subDays, startOfDay } from "date-fns";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
+import { useMemo } from "react";
 
 const statusColors: Record<string, string> = {
   paid: "bg-primary text-primary-foreground",
@@ -19,6 +30,13 @@ const statusColors: Record<string, string> = {
   completed: "bg-muted text-muted-foreground",
   cancelled: "bg-destructive/10 text-destructive",
 };
+
+const PIE_COLORS = [
+  "hsl(152, 76%, 36%)",
+  "hsl(199, 89%, 48%)",
+  "hsl(45, 93%, 58%)",
+  "hsl(0, 84%, 60%)",
+];
 
 const AdminDashboard = () => {
   const { data: bookings, isLoading: bookingsLoading } = useAdminBookings();
@@ -30,6 +48,38 @@ const AdminDashboard = () => {
   const totalRevenue = bookings?.reduce((sum, b: any) => sum + Number(b.total_amount || 0), 0) || 0;
   const activeCourts = courts?.filter((c) => c.is_active)?.length || 0;
   const recentBookings = bookings?.slice(0, 5) || [];
+
+  // Revenue chart data - last 7 days
+  const revenueData = useMemo(() => {
+    if (!bookings) return [];
+    const days: Record<string, number> = {};
+    for (let i = 6; i >= 0; i--) {
+      const day = format(subDays(new Date(), i), "MMM d");
+      days[day] = 0;
+    }
+    bookings.forEach((b: any) => {
+      if (b.status !== "cancelled") {
+        const day = format(new Date(b.booking_date), "MMM d");
+        if (day in days) {
+          days[day] += Number(b.total_amount || 0);
+        }
+      }
+    });
+    return Object.entries(days).map(([name, revenue]) => ({ name, revenue }));
+  }, [bookings]);
+
+  // Status distribution for pie chart
+  const statusData = useMemo(() => {
+    if (!bookings) return [];
+    const counts: Record<string, number> = {};
+    bookings.forEach((b: any) => {
+      counts[b.status] = (counts[b.status] || 0) + 1;
+    });
+    return Object.entries(counts).map(([name, value]) => ({
+      name: name.charAt(0).toUpperCase() + name.slice(1),
+      value,
+    }));
+  }, [bookings]);
 
   const stats = [
     { title: "Total Bookings", value: totalBookings.toString(), icon: Calendar },
@@ -64,6 +114,78 @@ const AdminDashboard = () => {
               </CardContent>
             </Card>
           ))}
+        </div>
+
+        {/* Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle>Revenue (Last 7 Days)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <Skeleton className="h-64 w-full" />
+              ) : (
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={revenueData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="name" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
+                    <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
+                    <Tooltip
+                      contentStyle={{
+                        background: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "8px",
+                        color: "hsl(var(--foreground))",
+                      }}
+                      formatter={(value: number) => [`₱${value.toLocaleString()}`, "Revenue"]}
+                    />
+                    <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Booking Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <Skeleton className="h-64 w-full" />
+              ) : statusData.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">No data</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={280}>
+                  <PieChart>
+                    <Pie
+                      data={statusData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={90}
+                      paddingAngle={4}
+                      dataKey="value"
+                      label={({ name, value }) => `${name}: ${value}`}
+                    >
+                      {statusData.map((_, index) => (
+                        <Cell key={index} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        background: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "8px",
+                        color: "hsl(var(--foreground))",
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         {/* Recent Bookings */}

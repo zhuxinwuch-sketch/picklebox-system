@@ -67,15 +67,18 @@ export function Navbar() {
                      {user.user_metadata?.full_name || user.email?.split("@")[0]}
                    </Button>
                  </DropdownMenuTrigger>
-                 <DropdownMenuContent align="end">
-                   <DropdownMenuItem asChild>
-                     <Link to="/bookings">My Bookings</Link>
-                   </DropdownMenuItem>
-                   <DropdownMenuItem onClick={handleSignOut}>
-                     <LogOut className="h-4 w-4 mr-2" />
-                     Logout
-                   </DropdownMenuItem>
-                 </DropdownMenuContent>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem asChild>
+                      <Link to="/profile">My Profile</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/bookings">My Bookings</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleSignOut}>
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Logout
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
                </DropdownMenu>
              ) : (
                <>
