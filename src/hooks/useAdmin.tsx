@@ -27,7 +27,7 @@ export function useAdminBookings() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bookings")
-        .select("*, courts(name)")
+        .select("*, courts(name), payments(id, transaction_reference, status)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
