@@ -6,7 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, CreditCard, Shield, Smartphone, CheckCircle, Clock } from "lucide-react";
+import { ArrowLeft, CreditCard, Shield, Smartphone, CheckCircle, Clock, QrCode, AlertCircle } from "lucide-react";
 import { useLocation, useNavigate, Navigate } from "react-router-dom";
 import { useState } from "react";
 import { format } from "date-fns";
@@ -14,6 +14,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useCreateBooking, useCreatePayment } from "@/hooks/useBookings";
 import { supabase } from "@/integrations/supabase/client";
+
+const GCASH_QR_NUMBER = "09XX-XXX-XXXX"; // Replace with actual GCash number
 
 const Checkout = () => {
   const location = useLocation();
@@ -24,6 +26,7 @@ const Checkout = () => {
   const createPayment = useCreatePayment();
   
   const [isProcessing, setIsProcessing] = useState(false);
+  const [referenceNumber, setReferenceNumber] = useState("");
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -45,7 +48,6 @@ const Checkout = () => {
     }));
   };
 
-  // Convert 12h time slots to 24h for DB storage
   const convertTo24h = (time12h: string): string => {
     const [time, modifier] = time12h.split(" ");
     let [hours, minutes] = time.split(":").map(Number);
@@ -54,7 +56,7 @@ const Checkout = () => {
     return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:00`;
   };
 
-  const handleGCashPayment = async () => {
+  const handleSubmitBooking = async () => {
     if (!formData.fullName || !formData.email || !formData.phone) {
       toast({
         title: "Missing Information",
@@ -64,21 +66,28 @@ const Checkout = () => {
       return;
     }
 
+    if (!referenceNumber.trim()) {
+      toast({
+        title: "Reference Number Required",
+        description: "Please enter the GCash reference number after sending your payment.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsProcessing(true);
 
     try {
-      // Sort slots and get start/end times
       const sortedSlots = [...bookingData.slots].sort();
       const startTime = convertTo24h(sortedSlots[0]);
       const lastSlot = sortedSlots[sortedSlots.length - 1];
-      // End time is 1 hour after last slot
       const lastTime24 = convertTo24h(lastSlot);
       const endHour = parseInt(lastTime24.split(":")[0]) + 1;
       const endTime = `${endHour.toString().padStart(2, "0")}:00:00`;
 
       const bookingDate = format(new Date(bookingData.date), "yyyy-MM-dd");
 
-      // Create booking in database
+      // Create booking (status defaults to 'pending')
       const booking = await createBooking.mutateAsync({
         user_id: user.id,
         court_id: bookingData.court.id,
@@ -88,23 +97,17 @@ const Checkout = () => {
         total_amount: bookingData.totalPrice,
       });
 
-      // Create payment record
+      // Create payment with reference number (status 'pending' until admin verifies)
       await createPayment.mutateAsync({
         booking_id: booking.id,
         user_id: user.id,
         amount: bookingData.totalPrice,
         payment_method: "gcash",
+        transaction_reference: referenceNumber.trim(),
       });
 
-      // Send booking confirmation notification (fire and forget)
-      supabase.functions.invoke("send-booking-notification", {
-        body: { bookingId: booking.id, type: "confirmation" },
-      }).catch((err) => console.error("Notification error:", err));
-
       navigate("/confirmation", {
-        state: {
-          bookingId: booking.id,
-        },
+        state: { bookingId: booking.id },
       });
     } catch (error: any) {
       toast({
@@ -182,29 +185,55 @@ const Checkout = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <CreditCard className="h-5 w-5 text-primary" />
-                    Payment Method
+                    GCash Payment
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="relative p-4 rounded-xl border-2 border-primary bg-primary/5 cursor-pointer">
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#007DFE]">
-                        <Smartphone className="h-6 w-6 text-primary-foreground" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-semibold text-foreground">GCash</p>
-                        <p className="text-sm text-muted-foreground">Pay with your GCash wallet</p>
-                      </div>
-                      <Badge variant="default">Recommended</Badge>
+                <CardContent className="space-y-6">
+                  {/* Step 1: Scan QR / Send to number */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">1</div>
+                      <p className="font-semibold text-foreground">Send payment via GCash</p>
                     </div>
-                    <div className="absolute top-4 right-4 h-5 w-5 rounded-full border-2 border-primary flex items-center justify-center">
-                      <div className="h-3 w-3 rounded-full bg-primary" />
+                    <div className="p-4 rounded-xl border border-border bg-muted/30 text-center space-y-3">
+                      <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-[#007DFE] mx-auto">
+                        <QrCode className="h-8 w-8 text-primary-foreground" />
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Send <span className="font-bold text-foreground">₱{bookingData.totalPrice}</span> to this GCash number:
+                      </p>
+                      <p className="text-xl font-bold font-mono text-foreground">{GCASH_QR_NUMBER}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Open your GCash app → Send Money → Enter the number above → Send ₱{bookingData.totalPrice}
+                      </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 text-sm text-muted-foreground">
-                    <Shield className="h-4 w-4" />
-                    <span>Your payment information is secured with 256-bit encryption</span>
+                  {/* Step 2: Enter reference number */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">2</div>
+                      <p className="font-semibold text-foreground">Enter GCash Reference Number</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Input
+                        placeholder="e.g. 1234 567 890"
+                        value={referenceNumber}
+                        onChange={(e) => setReferenceNumber(e.target.value)}
+                        className="font-mono text-lg"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        You can find the reference number in your GCash transaction receipt after sending the payment.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20 text-sm">
+                    <AlertCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                    <span className="text-foreground">
+                      Your booking will be marked as <strong>pending</strong> until the admin verifies your payment using the reference number. 
+                      The time slot will be reserved for you during this time.
+                    </span>
                   </div>
                 </CardContent>
               </Card>
@@ -260,8 +289,8 @@ const Checkout = () => {
                     variant="hero" 
                     size="lg" 
                     className="w-full"
-                    onClick={handleGCashPayment}
-                    disabled={isProcessing}
+                    onClick={handleSubmitBooking}
+                    disabled={isProcessing || !referenceNumber.trim()}
                   >
                     {isProcessing ? (
                       <>
@@ -271,13 +300,13 @@ const Checkout = () => {
                     ) : (
                       <>
                         <Smartphone className="h-4 w-4 mr-2" />
-                        Pay with GCash
+                        Submit Booking
                       </>
                     )}
                   </Button>
 
                   <p className="text-xs text-center text-muted-foreground">
-                    By completing this payment, you agree to our Terms of Service and Privacy Policy
+                    Your booking will be confirmed once payment is verified by admin
                   </p>
                 </CardContent>
               </Card>

@@ -10,18 +10,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useAdminBookings } from "@/hooks/useAdmin";
 import { supabase } from "@/integrations/supabase/client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { CheckCircle, XCircle } from "lucide-react";
 
 const statusVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   pending: "outline",
@@ -35,17 +29,37 @@ const AdminBookings = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const updateStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase
+  const updateBooking = useMutation({
+    mutationFn: async ({ bookingId, status, paymentId }: { bookingId: string; status: string; paymentId?: string }) => {
+      // Update booking status
+      const { error: bookingError } = await supabase
         .from("bookings")
         .update({ status: status as any })
-        .eq("id", id);
-      if (error) throw error;
+        .eq("id", bookingId);
+      if (bookingError) throw bookingError;
+
+      // If approving, also mark payment as completed
+      if (status === "paid" && paymentId) {
+        const { error: paymentError } = await supabase
+          .from("payments")
+          .update({ status: "completed" as any, paid_at: new Date().toISOString() })
+          .eq("id", paymentId);
+        if (paymentError) throw paymentError;
+      }
+
+      // If cancelling, mark payment as failed
+      if (status === "cancelled" && paymentId) {
+        const { error: paymentError } = await supabase
+          .from("payments")
+          .update({ status: "failed" as any })
+          .eq("id", paymentId);
+        if (paymentError) throw paymentError;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "bookings"] });
-      toast({ title: "Booking status updated" });
+      queryClient.invalidateQueries({ queryKey: ["admin", "payments"] });
+      toast({ title: "Booking updated successfully" });
     },
     onError: (error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -57,7 +71,7 @@ const AdminBookings = () => {
       <div className="p-6 lg:p-8">
         <div className="mb-8">
           <h1 className="text-2xl md:text-3xl font-bold text-foreground">Bookings</h1>
-          <p className="text-muted-foreground">Manage all court bookings</p>
+          <p className="text-muted-foreground">Manage bookings and verify GCash payments</p>
         </div>
 
         <Card>
@@ -67,61 +81,96 @@ const AdminBookings = () => {
             ) : bookings?.length === 0 ? (
               <div className="p-8 text-center text-muted-foreground">No bookings yet</div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Reference</TableHead>
-                    <TableHead>Court</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Time</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {bookings?.map((booking: any) => (
-                    <TableRow key={booking.id}>
-                      <TableCell className="font-mono text-sm text-foreground">
-                        {booking.reference_code || "—"}
-                      </TableCell>
-                      <TableCell className="text-foreground">
-                        {booking.courts?.name || "Unknown"}
-                      </TableCell>
-                      <TableCell className="text-foreground">
-                        {format(new Date(booking.booking_date), "MMM d, yyyy")}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {booking.start_time} - {booking.end_time}
-                      </TableCell>
-                      <TableCell className="font-semibold text-foreground">
-                        ₱{booking.total_amount}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={statusVariant[booking.status] || "secondary"}>
-                          {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Select
-                          value={booking.status}
-                          onValueChange={(value) => updateStatus.mutate({ id: booking.id, status: value })}
-                        >
-                          <SelectTrigger className="w-[130px]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="pending">Pending</SelectItem>
-                            <SelectItem value="paid">Paid</SelectItem>
-                            <SelectItem value="completed">Completed</SelectItem>
-                            <SelectItem value="cancelled">Cancelled</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Reference</TableHead>
+                      <TableHead>Court</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Time</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>GCash Ref #</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {bookings?.map((booking: any) => {
+                      const payment = booking.payments?.[0];
+                      const isPending = booking.status === "pending";
+                      
+                      return (
+                        <TableRow key={booking.id}>
+                          <TableCell className="font-mono text-sm text-foreground">
+                            {booking.reference_code || "—"}
+                          </TableCell>
+                          <TableCell className="text-foreground">
+                            {booking.courts?.name || "Unknown"}
+                          </TableCell>
+                          <TableCell className="text-foreground">
+                            {format(new Date(booking.booking_date), "MMM d, yyyy")}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {booking.start_time} - {booking.end_time}
+                          </TableCell>
+                          <TableCell className="font-semibold text-foreground">
+                            ₱{booking.total_amount}
+                          </TableCell>
+                          <TableCell className="font-mono text-sm">
+                            {payment?.transaction_reference ? (
+                              <span className="text-foreground">{payment.transaction_reference}</span>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={statusVariant[booking.status] || "secondary"}>
+                              {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {isPending ? (
+                              <div className="flex items-center justify-end gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  onClick={() => updateBooking.mutate({
+                                    bookingId: booking.id,
+                                    status: "paid",
+                                    paymentId: payment?.id,
+                                  })}
+                                  disabled={updateBooking.isPending}
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-1" />
+                                  Approve
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() => updateBooking.mutate({
+                                    bookingId: booking.id,
+                                    status: "cancelled",
+                                    paymentId: payment?.id,
+                                  })}
+                                  disabled={updateBooking.isPending}
+                                >
+                                  <XCircle className="h-4 w-4 mr-1" />
+                                  Deny
+                                </Button>
+                              </div>
+                            ) : (
+                              <span className="text-sm text-muted-foreground">
+                                {booking.status === "paid" ? "Verified" : booking.status === "cancelled" ? "Denied" : "—"}
+                              </span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </CardContent>
         </Card>

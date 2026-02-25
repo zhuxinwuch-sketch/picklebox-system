@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CheckCircle, Calendar, Clock, Download, Share2, Home } from "lucide-react";
+import { Clock as ClockIcon, Calendar, Clock, Home, AlertCircle } from "lucide-react";
 import { Link, useLocation, Navigate } from "react-router-dom";
 import { format } from "date-fns";
 import { useBooking } from "@/hooks/useBookings";
@@ -47,13 +47,26 @@ const Confirmation = () => {
       <main className="pt-24 pb-16">
         <div className="container mx-auto px-4 max-w-2xl">
           <div className="text-center mb-8 animate-slide-up">
-            <div className="inline-flex h-20 w-20 items-center justify-center rounded-full gradient-primary mb-6 animate-pulse-slow">
-              <CheckCircle className="h-10 w-10 text-primary-foreground" />
+            <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 border-2 border-primary mb-6">
+              <ClockIcon className="h-10 w-10 text-primary" />
             </div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">Booking Confirmed!</h1>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Booking Submitted!</h1>
             <p className="text-muted-foreground">
-              Your court reservation has been successfully created.
+              Your booking is pending admin verification of your GCash payment.
             </p>
+          </div>
+
+          <div className="flex items-start gap-3 p-4 rounded-xl bg-primary/5 border border-primary/20 mb-6">
+            <AlertCircle className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+            <div className="text-sm text-foreground">
+              <p className="font-semibold mb-1">What happens next?</p>
+              <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                <li>The admin will verify your GCash payment using your reference number</li>
+                <li>Once verified, your booking status will be updated to <strong className="text-foreground">Paid</strong></li>
+                <li>Your time slot is reserved while verification is in progress</li>
+                <li>If denied, the slot will be released for others to book</li>
+              </ul>
+            </div>
           </div>
 
           <Card className="mb-6">
@@ -63,6 +76,7 @@ const Confirmation = () => {
                 <p className="text-2xl font-bold font-mono text-foreground tracking-wider">
                   {booking.reference_code || "—"}
                 </p>
+                <Badge variant="outline" className="mt-2">Pending Verification</Badge>
               </div>
 
               <div className="space-y-4">

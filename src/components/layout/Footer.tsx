@@ -53,7 +53,7 @@ export function Footer() {
               </div>
               <div className="flex items-center gap-2 text-sm text-sidebar-foreground/70">
                 <MapPin className="h-4 w-4" />
-                <span>BGC, Taguig City, Philippines</span>
+                <span>Endrina St., San Carlos City, Negros Occidental</span>
               </div>
             </div>
           </div>

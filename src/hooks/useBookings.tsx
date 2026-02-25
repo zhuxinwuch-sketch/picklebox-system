@@ -72,6 +72,7 @@ export function useCreatePayment() {
       user_id: string;
       amount: number;
       payment_method: string;
+      transaction_reference?: string;
     }) => {
       const { data, error } = await supabase
         .from("payments")
