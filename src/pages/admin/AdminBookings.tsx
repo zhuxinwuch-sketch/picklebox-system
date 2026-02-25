@@ -86,6 +86,7 @@ const AdminBookings = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Reference</TableHead>
+                      <TableHead>Booked By</TableHead>
                       <TableHead>Court</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Time</TableHead>
@@ -104,6 +105,14 @@ const AdminBookings = () => {
                         <TableRow key={booking.id}>
                           <TableCell className="font-mono text-sm text-foreground">
                             {booking.reference_code || "—"}
+                          </TableCell>
+                          <TableCell className="text-foreground">
+                            <div>
+                              <span className="font-medium">{booking.profiles?.full_name || "Unknown"}</span>
+                              {booking.profiles?.phone && (
+                                <span className="block text-xs text-muted-foreground">{booking.profiles.phone}</span>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell className="text-foreground">
                             {booking.courts?.name || "Unknown"}
