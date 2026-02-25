@@ -30,6 +30,17 @@ export function useAdminBookings() {
         .select("*, courts(name), payments(id, transaction_reference, status)")
         .order("created_at", { ascending: false });
       if (error) throw error;
+
+      // Fetch profile names for all unique user_ids
+      const userIds = [...new Set((data || []).map((b: any) => b.user_id))];
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, full_name, phone")
+        .in("user_id", userIds);
+
+      const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+      return (data || []).map((b: any) => ({ ...b, profiles: profileMap.get(b.user_id) || null }));
+      if (error) throw error;
       return data;
     },
   });
