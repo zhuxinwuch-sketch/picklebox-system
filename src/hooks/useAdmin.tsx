@@ -40,8 +40,6 @@ export function useAdminBookings() {
 
       const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
       return (data || []).map((b: any) => ({ ...b, profiles: profileMap.get(b.user_id) || null }));
-      if (error) throw error;
-      return data;
     },
   });
 }
