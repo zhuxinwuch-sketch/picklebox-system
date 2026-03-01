@@ -12,6 +12,34 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+
+    // Authenticate the caller
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const callerId = claimsData.claims.sub as string;
+
     const { bookingId, type } = await req.json();
 
     if (!bookingId || !type) {
@@ -28,8 +56,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Fetch booking details with court info
@@ -45,6 +71,20 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: "Booking not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Authorize: caller must own the booking or be an admin
+    if (booking.user_id !== callerId) {
+      const { data: isAdmin } = await supabase.rpc("has_role", {
+        _user_id: callerId,
+        _role: "admin",
+      });
+      if (!isAdmin) {
+        return new Response(
+          JSON.stringify({ error: "Forbidden" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     // Fetch user email from auth
@@ -98,29 +138,7 @@ Deno.serve(async (req) => {
       `;
     }
 
-    // Log the email (in production, integrate with Resend/SendGrid/etc.)
     console.log(`Email notification [${type}] to ${email}: ${subject}`);
-    console.log("Email body:", body);
-
-    // For now, we log the email. To send real emails, add a RESEND_API_KEY secret
-    // and uncomment the following:
-    //
-    // const resendKey = Deno.env.get("RESEND_API_KEY");
-    // if (resendKey) {
-    //   await fetch("https://api.resend.com/emails", {
-    //     method: "POST",
-    //     headers: {
-    //       "Content-Type": "application/json",
-    //       Authorization: `Bearer ${resendKey}`,
-    //     },
-    //     body: JSON.stringify({
-    //       from: "The Pickle Box <noreply@picklebox.ph>",
-    //       to: [email],
-    //       subject,
-    //       html: body,
-    //     }),
-    //   });
-    // }
 
     return new Response(
       JSON.stringify({ 
