@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useCreateBooking, useCreatePayment } from "@/hooks/useBookings";
 import { supabase } from "@/integrations/supabase/client";
+import gcashQrImage from "@/assets/gcash-qr.png";
 
 const GCASH_QR_NUMBER = "09XX-XXX-XXXX"; // Replace with actual GCash number
 
@@ -196,9 +197,7 @@ const Checkout = () => {
                       <p className="font-semibold text-foreground">Send payment via GCash</p>
                     </div>
                     <div className="p-4 rounded-xl border border-border bg-muted/30 text-center space-y-3">
-                      <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-[#007DFE] mx-auto">
-                        <QrCode className="h-8 w-8 text-primary-foreground" />
-                      </div>
+                      <img src={gcashQrImage} alt="GCash QR Code" className="w-48 h-48 mx-auto rounded-lg object-contain" />
                       <p className="text-sm text-muted-foreground">
                         Send <span className="font-bold text-foreground">₱{bookingData.totalPrice}</span> to this GCash number:
                       </p>

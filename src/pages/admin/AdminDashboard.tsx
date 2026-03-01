@@ -45,7 +45,7 @@ const AdminDashboard = () => {
   const isLoading = bookingsLoading || courtsLoading;
 
   const totalBookings = bookings?.length || 0;
-  const totalRevenue = bookings?.reduce((sum, b: any) => sum + Number(b.total_amount || 0), 0) || 0;
+  const totalRevenue = bookings?.filter((b: any) => b.status === "paid" || b.status === "completed").reduce((sum, b: any) => sum + Number(b.total_amount || 0), 0) || 0;
   const activeCourts = courts?.filter((c) => c.is_active)?.length || 0;
   const recentBookings = bookings?.slice(0, 5) || [];
 
@@ -58,7 +58,7 @@ const AdminDashboard = () => {
       days[day] = 0;
     }
     bookings.forEach((b: any) => {
-      if (b.status !== "cancelled") {
+      if (b.status === "paid" || b.status === "completed") {
         const day = format(new Date(b.booking_date), "MMM d");
         if (day in days) {
           days[day] += Number(b.total_amount || 0);
