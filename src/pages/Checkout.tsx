@@ -16,8 +16,6 @@ import { useCreateBooking, useCreatePayment } from "@/hooks/useBookings";
 import { supabase } from "@/integrations/supabase/client";
 import gcashQrImage from "@/assets/gcash-qr.png";
 
-const GCASH_QR_NUMBER = "09XX-XXX-XXXX"; // Replace with actual GCash number
-
 const Checkout = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -28,6 +26,7 @@ const Checkout = () => {
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [referenceNumber, setReferenceNumber] = useState("");
+  const [qrFullscreen, setQrFullscreen] = useState(false);
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -197,15 +196,34 @@ const Checkout = () => {
                       <p className="font-semibold text-foreground">Send payment via GCash</p>
                     </div>
                     <div className="p-4 rounded-xl border border-border bg-muted/30 text-center space-y-3">
-                      <img src={gcashQrImage} alt="GCash QR Code" className="w-48 h-48 mx-auto rounded-lg object-contain" />
+                      <img
+                        src={gcashQrImage}
+                        alt="GCash QR Code"
+                        className="w-48 h-48 mx-auto rounded-lg object-contain cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => setQrFullscreen(true)}
+                      />
+                      <p className="text-xs text-muted-foreground">Tap the QR code to enlarge</p>
                       <p className="text-sm text-muted-foreground">
-                        Send <span className="font-bold text-foreground">₱{bookingData.totalPrice}</span> to this GCash number:
+                        Send <span className="font-bold text-foreground">₱{bookingData.totalPrice}</span> via GCash
                       </p>
-                      <p className="text-xl font-bold font-mono text-foreground">{GCASH_QR_NUMBER}</p>
                       <p className="text-xs text-muted-foreground">
-                        Open your GCash app → Send Money → Enter the number above → Send ₱{bookingData.totalPrice}
+                        Open your GCash app → Scan QR → Send ₱{bookingData.totalPrice}
                       </p>
                     </div>
+
+                    {/* QR Fullscreen Modal */}
+                    {qrFullscreen && (
+                      <div
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+                        onClick={() => setQrFullscreen(false)}
+                      >
+                        <img
+                          src={gcashQrImage}
+                          alt="GCash QR Code"
+                          className="max-w-[90vw] max-h-[90vh] rounded-xl object-contain"
+                        />
+                      </div>
+                    )}
                   </div>
 
                   {/* Step 2: Enter reference number */}
