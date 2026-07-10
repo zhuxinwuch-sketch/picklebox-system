@@ -6,7 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, CreditCard, Shield, Smartphone, CheckCircle, Clock, QrCode, AlertCircle } from "lucide-react";
+import { ArrowLeft, CreditCard, Smartphone, CheckCircle, Clock, AlertCircle } from "lucide-react";
 import { useLocation, useNavigate, Navigate } from "react-router-dom";
 import { useState } from "react";
 import { format } from "date-fns";
@@ -16,6 +16,44 @@ import { useCreateBooking, useCreatePayment } from "@/hooks/useBookings";
 import { supabase } from "@/integrations/supabase/client";
 import gcashQrImage from "@/assets/gcash-qr.png";
 
+type Selection = {
+  courtId: string;
+  courtName: string;
+  pricePerHour: number;
+  slots: string[]; // "HH:MM:SS"
+};
+
+// Split sorted slots into contiguous groups.
+// e.g. ["07:00:00","08:00:00","15:00:00"] → [["07:00:00","08:00:00"], ["15:00:00"]]
+function groupContiguous(slots: string[]): string[][] {
+  if (slots.length === 0) return [];
+  const sorted = [...slots].sort();
+  const groups: string[][] = [[sorted[0]]];
+  for (let i = 1; i < sorted.length; i++) {
+    const prevHour = parseInt(sorted[i - 1].split(":")[0], 10);
+    const currHour = parseInt(sorted[i].split(":")[0], 10);
+    if (currHour === prevHour + 1) {
+      groups[groups.length - 1].push(sorted[i]);
+    } else {
+      groups.push([sorted[i]]);
+    }
+  }
+  return groups;
+}
+
+function endTimeForGroup(group: string[]): string {
+  const lastStart = group[group.length - 1];
+  const endHour = parseInt(lastStart.split(":")[0], 10) + 1;
+  return `${endHour.toString().padStart(2, "0")}:00:00`;
+}
+
+function formatSlot(t: string): string {
+  const h = parseInt(t.split(":")[0], 10);
+  const suffix = h < 12 ? "AM" : "PM";
+  const displayHour = h % 12 === 0 ? 12 : h % 12;
+  return `${displayHour}:00 ${suffix}`;
+}
+
 const Checkout = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -23,37 +61,26 @@ const Checkout = () => {
   const { user, loading: authLoading } = useAuth();
   const createBooking = useCreateBooking();
   const createPayment = useCreatePayment();
-  
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [referenceNumber, setReferenceNumber] = useState("");
   const [qrFullscreen, setQrFullscreen] = useState(false);
-  const [formData, setFormData] = useState({
-    fullName: "",
-    email: "",
-    phone: "",
-  });
+  const [formData, setFormData] = useState({ fullName: "", email: "", phone: "" });
 
-  const bookingData = location.state;
+  const bookingData = location.state as
+    | { date: string; selections: Selection[]; totalPrice: number }
+    | undefined;
 
   if (authLoading) return null;
   if (!user) return <Navigate to="/auth" replace />;
-  if (!bookingData?.court || !bookingData?.date || !bookingData?.slots?.length) {
+  if (!bookingData?.selections?.length || !bookingData?.date) {
     return <Navigate to="/courts" replace />;
   }
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }));
-  };
+  const { selections, totalPrice, date } = bookingData;
 
-  const convertTo24h = (time12h: string): string => {
-    const [time, modifier] = time12h.split(" ");
-    let [hours, minutes] = time.split(":").map(Number);
-    if (modifier === "PM" && hours !== 12) hours += 12;
-    if (modifier === "AM" && hours === 12) hours = 0;
-    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:00`;
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData((p) => ({ ...p, [e.target.name]: e.target.value }));
   };
 
   const handleSubmitBooking = async () => {
@@ -65,7 +92,6 @@ const Checkout = () => {
       });
       return;
     }
-
     if (!referenceNumber.trim()) {
       toast({
         title: "Reference Number Required",
@@ -76,43 +102,53 @@ const Checkout = () => {
     }
 
     setIsProcessing(true);
+    const bookingDate = format(new Date(date), "yyyy-MM-dd");
+    const createdIds: string[] = [];
 
     try {
-      const sortedSlots = [...bookingData.slots].sort();
-      const startTime = convertTo24h(sortedSlots[0]);
-      const lastSlot = sortedSlots[sortedSlots.length - 1];
-      const lastTime24 = convertTo24h(lastSlot);
-      const endHour = parseInt(lastTime24.split(":")[0]) + 1;
-      const endTime = `${endHour.toString().padStart(2, "0")}:00:00`;
+      // For each court selection, split into contiguous groups → one booking per group
+      for (const sel of selections) {
+        const groups = groupContiguous(sel.slots);
+        for (const group of groups) {
+          const startTime = group[0];
+          const endTime = endTimeForGroup(group);
+          const amount = group.length * sel.pricePerHour;
 
-      const bookingDate = format(new Date(bookingData.date), "yyyy-MM-dd");
+          const booking = await createBooking.mutateAsync({
+            user_id: user.id,
+            court_id: sel.courtId,
+            booking_date: bookingDate,
+            start_time: startTime,
+            end_time: endTime,
+            total_amount: amount,
+          });
 
-      // Create booking (status defaults to 'pending')
-      const booking = await createBooking.mutateAsync({
-        user_id: user.id,
-        court_id: bookingData.court.id,
-        booking_date: bookingDate,
-        start_time: startTime,
-        end_time: endTime,
-        total_amount: bookingData.totalPrice,
-      });
+          await createPayment.mutateAsync({
+            booking_id: booking.id,
+            user_id: user.id,
+            amount,
+            payment_method: "gcash",
+            transaction_reference: referenceNumber.trim(),
+          });
 
-      // Create payment with reference number (status 'pending' until admin verifies)
-      await createPayment.mutateAsync({
-        booking_id: booking.id,
-        user_id: user.id,
-        amount: bookingData.totalPrice,
-        payment_method: "gcash",
-        transaction_reference: referenceNumber.trim(),
-      });
+          createdIds.push(booking.id);
 
-      navigate("/confirmation", {
-        state: { bookingId: booking.id },
-      });
+          // Fire-and-forget confirmation notification
+          supabase.functions
+            .invoke("send-booking-notification", {
+              body: { bookingId: booking.id, type: "confirmation" },
+            })
+            .catch((err) => console.error("Notification error:", err));
+        }
+      }
+
+      navigate("/confirmation", { state: { bookingIds: createdIds } });
     } catch (error: any) {
       toast({
         title: "Booking Failed",
-        description: error.message || "Something went wrong. Please try again.",
+        description:
+          error.message ||
+          "Something went wrong. Some slots may already be reserved. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -123,10 +159,10 @@ const Checkout = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      
+
       <main className="pt-24 pb-16">
         <div className="container mx-auto px-4 max-w-4xl">
-          <button 
+          <button
             onClick={() => navigate(-1)}
             className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6 transition-colors"
           >
@@ -189,7 +225,6 @@ const Checkout = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  {/* Step 1: Scan QR / Send to number */}
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">1</div>
@@ -204,14 +239,13 @@ const Checkout = () => {
                       />
                       <p className="text-xs text-muted-foreground">Tap the QR code to enlarge</p>
                       <p className="text-sm text-muted-foreground">
-                        Send <span className="font-bold text-foreground">₱{bookingData.totalPrice}</span> via GCash
+                        Send <span className="font-bold text-foreground">₱{totalPrice}</span> via GCash
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Open your GCash app → Scan QR → Send ₱{bookingData.totalPrice}
+                        Open your GCash app → Scan QR → Send ₱{totalPrice}
                       </p>
                     </div>
 
-                    {/* QR Fullscreen Modal */}
                     {qrFullscreen && (
                       <div
                         className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
@@ -226,7 +260,6 @@ const Checkout = () => {
                     )}
                   </div>
 
-                  {/* Step 2: Enter reference number */}
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">2</div>
@@ -248,8 +281,7 @@ const Checkout = () => {
                   <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20 text-sm">
                     <AlertCircle className="h-4 w-4 text-primary mt-0.5 shrink-0" />
                     <span className="text-foreground">
-                      Your booking will be marked as <strong>pending</strong> until the admin verifies your payment using the reference number. 
-                      The time slot will be reserved for you during this time.
+                      Your booking will be marked as <strong>pending</strong> until the admin verifies your payment. Time slots stay reserved for you during verification.
                     </span>
                   </div>
                 </CardContent>
@@ -264,47 +296,45 @@ const Checkout = () => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="p-3 rounded-lg bg-muted/50">
-                    <p className="font-semibold text-foreground">{bookingData.court?.name || "Court"}</p>
-                    <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-2 text-sm text-foreground">
                       <Clock className="h-4 w-4" />
-                      <span>
-                        {bookingData.date ? format(new Date(bookingData.date), "MMM d, yyyy") : "Date"}
-                      </span>
+                      <span className="font-medium">{format(new Date(date), "EEE, MMM d, yyyy")}</span>
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-foreground">Selected Time Slots:</p>
-                    <div className="flex flex-wrap gap-1">
-                      {bookingData.slots?.map((slot: string) => (
-                        <Badge key={slot} variant="secondary" className="text-xs">{slot}</Badge>
-                      ))}
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Court Fee ({bookingData.slots?.length || 0} hours)</span>
-                      <span className="text-foreground">₱{bookingData.totalPrice || 0}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Service Fee</span>
-                      <span className="text-foreground">₱0</span>
-                    </div>
+                  <div className="space-y-3">
+                    {selections.map((sel) => (
+                      <div key={sel.courtId} className="border border-border rounded-lg p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="font-semibold text-foreground text-sm">{sel.courtName}</p>
+                          <span className="text-sm text-muted-foreground">
+                            ₱{sel.pricePerHour} × {sel.slots.length}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {sel.slots.map((s) => (
+                            <Badge key={s} variant="secondary" className="text-xs">
+                              {formatSlot(s)}
+                            </Badge>
+                          ))}
+                        </div>
+                        <div className="mt-2 text-right text-sm font-semibold text-foreground">
+                          ₱{sel.slots.length * sel.pricePerHour}
+                        </div>
+                      </div>
+                    ))}
                   </div>
 
                   <Separator />
 
                   <div className="flex justify-between items-center">
                     <span className="text-lg font-semibold text-foreground">Total</span>
-                    <span className="text-2xl font-bold text-primary">₱{bookingData.totalPrice || 0}</span>
+                    <span className="text-2xl font-bold text-primary">₱{totalPrice}</span>
                   </div>
 
-                  <Button 
-                    variant="hero" 
-                    size="lg" 
+                  <Button
+                    variant="hero"
+                    size="lg"
                     className="w-full"
                     onClick={handleSubmitBooking}
                     disabled={isProcessing || !referenceNumber.trim()}
