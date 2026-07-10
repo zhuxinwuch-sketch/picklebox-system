@@ -2,12 +2,11 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Courts from "./pages/Courts";
-import BookCourt from "./pages/BookCourt";
 import Checkout from "./pages/Checkout";
 import Confirmation from "./pages/Confirmation";
 import Bookings from "./pages/Bookings";
@@ -36,7 +35,8 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
 
             {/* Auth-protected routes */}
-            <Route path="/book/:id" element={<ProtectedRoute><BookCourt /></ProtectedRoute>} />
+            {/* Legacy per-court booking URL — redirect to unified grid */}
+            <Route path="/book/:id" element={<Navigate to="/courts" replace />} />
             <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
             <Route path="/confirmation" element={<ProtectedRoute><Confirmation /></ProtectedRoute>} />
             <Route path="/bookings" element={<ProtectedRoute><Bookings /></ProtectedRoute>} />

@@ -105,3 +105,38 @@ export function useBookedSlots(courtId: string | undefined, date: string | undef
     enabled: !!courtId && !!date,
   });
 }
+
+export function useBookedSlotsAllCourts(date: string | undefined) {
+  return useQuery({
+    queryKey: ["booked-slots-all", date],
+    queryFn: async () => {
+      if (!date) return [];
+      const { data, error } = await supabase
+        .from("bookings")
+        .select("court_id, start_time, end_time")
+        .eq("booking_date", date)
+        .in("status", ["pending", "paid"]);
+      if (error) throw error;
+      return data as Array<{ court_id: string; start_time: string; end_time: string }>;
+    },
+    enabled: !!date,
+  });
+}
+
+export function useBookingsByIds(ids: string[] | undefined) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["bookings-by-ids", ids?.join(",")],
+    queryFn: async () => {
+      if (!ids?.length || !user) return [];
+      const { data, error } = await supabase
+        .from("bookings")
+        .select("*, courts(name, description, price_per_hour), payments(*)")
+        .in("id", ids)
+        .eq("user_id", user.id);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!ids?.length && !!user,
+  });
+}

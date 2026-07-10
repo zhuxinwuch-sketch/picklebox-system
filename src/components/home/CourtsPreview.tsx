@@ -88,7 +88,7 @@ export function CourtsPreview() {
                     <span className="text-2xl font-bold text-foreground">₱{court.price}</span>
                     <span className="text-sm text-muted-foreground">/hour</span>
                   </div>
-                  <Link to={`/book/${court.id}`}>
+                  <Link to="/courts">
                     <Button size="sm" disabled={!court.available}>
                       {court.available ? "Book Now" : "Unavailable"}
                     </Button>
