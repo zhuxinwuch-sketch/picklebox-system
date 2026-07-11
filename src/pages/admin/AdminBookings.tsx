@@ -30,31 +30,14 @@ const AdminBookings = () => {
   const { toast } = useToast();
 
   const updateBooking = useMutation({
-    mutationFn: async ({ bookingId, status, paymentId }: { bookingId: string; status: string; paymentId?: string }) => {
-      // Update booking status
-      const { error: bookingError } = await supabase
-        .from("bookings")
-        .update({ status: status as any })
-        .eq("id", bookingId);
-      if (bookingError) throw bookingError;
-
-      // If approving, also mark payment as completed
-      if (status === "paid" && paymentId) {
-        const { error: paymentError } = await supabase
-          .from("payments")
-          .update({ status: "completed" as any, paid_at: new Date().toISOString() })
-          .eq("id", paymentId);
-        if (paymentError) throw paymentError;
-      }
-
-      // If cancelling, mark payment as failed
-      if (status === "cancelled" && paymentId) {
-        const { error: paymentError } = await supabase
-          .from("payments")
-          .update({ status: "failed" as any })
-          .eq("id", paymentId);
-        if (paymentError) throw paymentError;
-      }
+    mutationFn: async ({ bookingId, status }: { bookingId: string; status: "paid" | "cancelled"; paymentId?: string }) => {
+      // Use the SECURITY DEFINER RPC — it atomically updates bookings,
+      // booking_slots (frees the slot on cancel), and payments together.
+      const { error } = await supabase.rpc("resolve_booking_reservation", {
+        p_booking_id: bookingId,
+        p_status: status,
+      });
+      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "bookings"] });
