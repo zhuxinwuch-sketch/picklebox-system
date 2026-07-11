@@ -14,6 +14,89 @@ export type Database = {
   }
   public: {
     Tables: {
+      booking_migration_conflicts: {
+        Row: {
+          booking_id: string
+          conflicting_slot_date: string
+          conflicting_slot_time: string
+          id: string
+          previous_status: Database["public"]["Enums"]["booking_status"]
+          recorded_at: string
+          reference_code: string | null
+        }
+        Insert: {
+          booking_id: string
+          conflicting_slot_date: string
+          conflicting_slot_time: string
+          id?: string
+          previous_status: Database["public"]["Enums"]["booking_status"]
+          recorded_at?: string
+          reference_code?: string | null
+        }
+        Update: {
+          booking_id?: string
+          conflicting_slot_date?: string
+          conflicting_slot_time?: string
+          id?: string
+          previous_status?: Database["public"]["Enums"]["booking_status"]
+          recorded_at?: string
+          reference_code?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_migration_conflicts_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      booking_slots: {
+        Row: {
+          booking_date: string
+          booking_id: string
+          court_id: string
+          created_at: string
+          id: string
+          is_reserved: boolean
+          start_time: string
+        }
+        Insert: {
+          booking_date: string
+          booking_id: string
+          court_id: string
+          created_at?: string
+          id?: string
+          is_reserved?: boolean
+          start_time: string
+        }
+        Update: {
+          booking_date?: string
+          booking_id?: string
+          court_id?: string
+          created_at?: string
+          id?: string
+          is_reserved?: boolean
+          start_time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_slots_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_slots_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bookings: {
         Row: {
           booking_date: string
@@ -203,12 +286,32 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cancel_booking_reservation: {
+        Args: { p_booking_id: string }
+        Returns: undefined
+      }
+      create_booking_reservation: {
+        Args: {
+          p_booking_date: string
+          p_court_id: string
+          p_slot_start_times: string[]
+          p_transaction_reference: string
+        }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      resolve_booking_reservation: {
+        Args: {
+          p_booking_id: string
+          p_status: Database["public"]["Enums"]["booking_status"]
+        }
+        Returns: undefined
       }
     }
     Enums: {
