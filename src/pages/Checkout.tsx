@@ -12,7 +12,7 @@ import { useState } from "react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { useCreateBooking, useCreatePayment } from "@/hooks/useBookings";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import gcashQrImage from "@/assets/gcash-qr.png";
 
@@ -59,8 +59,7 @@ const Checkout = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
-  const createBooking = useCreateBooking();
-  const createPayment = useCreatePayment();
+  const queryClient = useQueryClient();
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [referenceNumber, setReferenceNumber] = useState("");
@@ -103,52 +102,80 @@ const Checkout = () => {
 
     setIsProcessing(true);
     const bookingDate = format(new Date(date), "yyyy-MM-dd");
-    const createdIds: string[] = [];
+
+    // Build atomic items list: one row per contiguous group per court
+    const items: Array<{
+      court_id: string;
+      court_name: string;
+      start_time: string;
+      end_time: string;
+      amount: number;
+    }> = [];
+    for (const sel of selections) {
+      for (const group of groupContiguous(sel.slots)) {
+        items.push({
+          court_id: sel.courtId,
+          court_name: sel.courtName,
+          start_time: group[0],
+          end_time: endTimeForGroup(group),
+          amount: group.length * sel.pricePerHour,
+        });
+      }
+    }
 
     try {
-      // For each court selection, split into contiguous groups → one booking per group
-      for (const sel of selections) {
-        const groups = groupContiguous(sel.slots);
-        for (const group of groups) {
-          const startTime = group[0];
-          const endTime = endTimeForGroup(group);
-          const amount = group.length * sel.pricePerHour;
+      const { data, error } = await supabase.rpc("create_bookings_atomic", {
+        p_date: bookingDate,
+        p_reference: referenceNumber.trim(),
+        p_items: items.map(({ court_name, ...rest }) => rest),
+      });
 
-          const booking = await createBooking.mutateAsync({
-            user_id: user.id,
-            court_id: sel.courtId,
-            booking_date: bookingDate,
-            start_time: startTime,
-            end_time: endTime,
-            total_amount: amount,
+      if (error) {
+        // Parse structured "SLOT_TAKEN:<court_id>:<start_time>" from Postgres
+        const msg = error.message || "";
+        const match = msg.match(/SLOT_TAKEN:([0-9a-f-]+):(\d{2}:\d{2}:\d{2})/i);
+        if (match) {
+          const [, courtId, startTime] = match;
+          const item = items.find(
+            (i) => i.court_id === courtId && i.start_time === startTime
+          );
+          const label = item
+            ? `${item.court_name} at ${formatSlot(startTime)}`
+            : "one of your slots";
+          toast({
+            title: "Slot just taken",
+            description: `${label} was booked by someone else moments ago. No bookings or payments were created. Please pick another slot.`,
+            variant: "destructive",
           });
-
-          await createPayment.mutateAsync({
-            booking_id: booking.id,
-            user_id: user.id,
-            amount,
-            payment_method: "gcash",
-            transaction_reference: referenceNumber.trim(),
-          });
-
-          createdIds.push(booking.id);
-
-          // Fire-and-forget confirmation notification
-          supabase.functions
-            .invoke("send-booking-notification", {
-              body: { bookingId: booking.id, type: "confirmation" },
-            })
-            .catch((err) => console.error("Notification error:", err));
+          // Refresh availability and send user back
+          queryClient.invalidateQueries({ queryKey: ["booked-slots-all"] });
+          queryClient.invalidateQueries({ queryKey: ["booked-slots"] });
+          navigate("/courts");
+          return;
         }
+        throw error;
       }
 
+      const createdIds = (data as string[]) || [];
+
+      // Fire-and-forget notifications
+      createdIds.forEach((id) => {
+        supabase.functions
+          .invoke("send-booking-notification", {
+            body: { bookingId: id, type: "confirmation" },
+          })
+          .catch((err) => console.error("Notification error:", err));
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["bookings"] });
+      queryClient.invalidateQueries({ queryKey: ["booked-slots-all"] });
       navigate("/confirmation", { state: { bookingIds: createdIds } });
     } catch (error: any) {
       toast({
         title: "Booking Failed",
         description:
           error.message ||
-          "Something went wrong. Some slots may already be reserved. Please try again.",
+          "Something went wrong. Please try again.",
         variant: "destructive",
       });
     } finally {

@@ -13,6 +13,8 @@ import { useCourts } from "@/hooks/useCourts";
 import { useBookedSlotsAllCourts } from "@/hooks/useBookings";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const TIME_SLOTS = [
   { label: "7AM–8AM", start: "07:00:00", display: "7:00 AM" },
@@ -41,6 +43,7 @@ const Courts = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const [selectedDate, setSelectedDate] = useState<Date>(startOfDay(new Date()));
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -53,6 +56,60 @@ const Courts = () => {
   useEffect(() => {
     setSelected(new Set());
   }, [dateStr]);
+
+  // Live availability: subscribe to bookings changes for the current date
+  useEffect(() => {
+    const channel = supabase
+      .channel(`bookings-${dateStr}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "bookings",
+          filter: `booking_date=eq.${dateStr}`,
+        },
+        (payload) => {
+          queryClient.invalidateQueries({ queryKey: ["booked-slots-all", dateStr] });
+
+          // If a newly active booking overlaps a slot the user has selected, drop it.
+          const row: any = payload.new || payload.old;
+          if (!row) return;
+          const activeStatuses = ["pending", "paid", "completed"];
+          if (payload.eventType !== "DELETE" && !activeStatuses.includes(row.status)) return;
+
+          setSelected((prev) => {
+            const next = new Set(prev);
+            let removed = 0;
+            prev.forEach((k) => {
+              const [courtId, slotStart] = k.split("::");
+              if (
+                courtId === row.court_id &&
+                slotStart >= row.start_time &&
+                slotStart < row.end_time
+              ) {
+                next.delete(k);
+                removed++;
+              }
+            });
+            if (removed > 0) {
+              toast({
+                title: "A slot you selected was just booked",
+                description: `${removed} slot${removed > 1 ? "s were" : " was"} removed from your selection.`,
+                variant: "destructive",
+              });
+            }
+            return next;
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [dateStr, queryClient, toast]);
+
 
   // Map of courtId -> [(start, end)] for booked ranges
   const bookedByCourt = useMemo(() => {
