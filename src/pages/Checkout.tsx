@@ -12,7 +12,7 @@ import { useState } from "react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { useCreateBooking, useCreatePayment } from "@/hooks/useBookings";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import gcashQrImage from "@/assets/gcash-qr.png";
 
