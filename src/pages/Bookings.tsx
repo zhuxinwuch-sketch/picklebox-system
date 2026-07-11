@@ -32,11 +32,8 @@ const Bookings = () => {
 
   const cancelBooking = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from("bookings")
-        .update({ status: "cancelled" as any })
-        .eq("id", id)
-        .eq("user_id", user!.id);
+      // RPC also frees the reserved slot and marks the pending payment as failed.
+      const { error } = await supabase.rpc("cancel_booking_reservation", { p_booking_id: id });
       if (error) throw error;
       return id;
     },
