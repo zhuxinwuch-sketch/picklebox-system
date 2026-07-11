@@ -299,6 +299,10 @@ export type Database = {
         }
         Returns: Json
       }
+      create_bookings_atomic: {
+        Args: { p_date: string; p_items: Json; p_reference: string }
+        Returns: string[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
