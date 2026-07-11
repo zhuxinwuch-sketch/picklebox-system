@@ -13,6 +13,8 @@ import { useCourts } from "@/hooks/useCourts";
 import { useBookedSlotsAllCourts } from "@/hooks/useBookings";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const TIME_SLOTS = [
   { label: "7AM–8AM", start: "07:00:00", display: "7:00 AM" },
