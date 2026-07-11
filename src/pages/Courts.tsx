@@ -57,37 +57,34 @@ const Courts = () => {
     setSelected(new Set());
   }, [dateStr]);
 
-  // Live availability: subscribe to bookings changes for the current date
+  // Live availability: subscribe to booking_slots changes for the current date
+  // (booking_slots is visible to all authenticated users; bookings is not).
   useEffect(() => {
     const channel = supabase
-      .channel(`bookings-${dateStr}`)
+      .channel(`booking-slots-${dateStr}`)
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
-          table: "bookings",
+          table: "booking_slots",
           filter: `booking_date=eq.${dateStr}`,
         },
         (payload) => {
           queryClient.invalidateQueries({ queryKey: ["booked-slots-all", dateStr] });
 
-          // If a newly active booking overlaps a slot the user has selected, drop it.
           const row: any = payload.new || payload.old;
           if (!row) return;
-          const activeStatuses = ["pending", "paid", "completed"];
-          if (payload.eventType !== "DELETE" && !activeStatuses.includes(row.status)) return;
+          // Only react when a slot became reserved (or was deleted)
+          const nowReserved = payload.eventType !== "DELETE" && row.is_reserved === true;
+          if (!nowReserved && payload.eventType !== "DELETE") return;
 
           setSelected((prev) => {
             const next = new Set(prev);
             let removed = 0;
             prev.forEach((k) => {
               const [courtId, slotStart] = k.split("::");
-              if (
-                courtId === row.court_id &&
-                slotStart >= row.start_time &&
-                slotStart < row.end_time
-              ) {
+              if (courtId === row.court_id && slotStart === row.start_time) {
                 next.delete(k);
                 removed++;
               }
