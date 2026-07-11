@@ -59,8 +59,7 @@ const Checkout = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
-  const createBooking = useCreateBooking();
-  const createPayment = useCreatePayment();
+  const queryClient = useQueryClient();
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [referenceNumber, setReferenceNumber] = useState("");
