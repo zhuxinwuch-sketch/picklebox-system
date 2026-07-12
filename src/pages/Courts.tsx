@@ -264,7 +264,11 @@ const Courts = () => {
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="inline-block h-3 w-3 rounded bg-muted" />
-                Reserved
+                Reserved (pending)
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="inline-block h-3 w-3 rounded bg-destructive/30" />
+                Booked (paid)
               </div>
             </div>
           </div>
