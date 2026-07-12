@@ -108,22 +108,24 @@ const Courts = () => {
   }, [dateStr, queryClient, toast]);
 
 
-  // Map of courtId -> [(start, end)] for booked ranges
+  // Map of courtId -> [(start, end, status)] for booked ranges
   const bookedByCourt = useMemo(() => {
-    const map = new Map<string, Array<[string, string]>>();
+    const map = new Map<string, Array<[string, string, "pending" | "paid"]>>();
     (bookedRows || []).forEach((b) => {
       if (!map.has(b.court_id)) map.set(b.court_id, []);
-      map.get(b.court_id)!.push([b.start_time, b.end_time]);
+      map.get(b.court_id)!.push([b.start_time, b.end_time, b.status]);
     });
     return map;
   }, [bookedRows]);
 
-  const isBooked = (courtId: string, slotStart: string) => {
+  const getBookedStatus = (courtId: string, slotStart: string): "pending" | "paid" | null => {
     const ranges = bookedByCourt.get(courtId);
-    if (!ranges) return false;
-    // Compare as HH:MM:SS strings (lexicographic order matches time order)
-    return ranges.some(([start, end]) => slotStart >= start && slotStart < end);
+    if (!ranges) return null;
+    const hit = ranges.find(([start, end]) => slotStart >= start && slotStart < end);
+    return hit ? hit[2] : null;
   };
+
+  const isBooked = (courtId: string, slotStart: string) => getBookedStatus(courtId, slotStart) !== null;
 
   // End drag on pointer release anywhere
   useEffect(() => {
