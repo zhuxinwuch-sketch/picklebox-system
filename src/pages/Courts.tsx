@@ -289,7 +289,9 @@ const Courts = () => {
                     {slot.label}
                   </div>
                   {courts.map((court) => {
-                    const booked = isBooked(court.id, slot.start);
+                    const status = getBookedStatus(court.id, slot.start);
+                    const booked = status !== null;
+                    const isPaid = status === "paid";
                     const key = makeKey(court.id, slot.start);
                     const isSelected = selected.has(key);
                     return (
@@ -301,7 +303,8 @@ const Courts = () => {
                         onPointerEnter={() => handlePointerEnter(court.id, slot.start)}
                         className={cn(
                           "border-l border-border h-14 md:h-16 transition-colors text-xs font-medium touch-none",
-                          booked && "bg-muted/60 cursor-not-allowed text-muted-foreground",
+                          booked && !isPaid && "bg-muted/60 cursor-not-allowed text-muted-foreground",
+                          booked && isPaid && "bg-destructive/15 cursor-not-allowed text-destructive",
                           !booked && !isSelected && "bg-background hover:bg-primary/10 cursor-pointer",
                           !booked && isSelected && "bg-primary text-primary-foreground shadow-inner"
                         )}
@@ -309,7 +312,7 @@ const Courts = () => {
                         {booked ? (
                           <span className="inline-flex items-center gap-1">
                             <Lock className="h-3 w-3" />
-                            Reserved
+                            {isPaid ? "Booked" : "Reserved"}
                           </span>
                         ) : isSelected ? (
                           <span>✓</span>
