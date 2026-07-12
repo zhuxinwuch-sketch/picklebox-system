@@ -100,6 +100,18 @@ const Courts = () => {
           });
         }
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "bookings",
+          filter: `booking_date=eq.${dateStr}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["booked-slots-all", dateStr] });
+        }
+      )
       .subscribe();
 
     return () => {
