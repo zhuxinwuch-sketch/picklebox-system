@@ -111,20 +111,13 @@ export function useBookedSlotsAllCourts(date: string | undefined) {
     queryKey: ["booked-slots-all", date],
     queryFn: async () => {
       if (!date) return [];
-      // booking_slots is readable to all authenticated users, so this
-      // shows reservations from OTHER users too (bookings table is
-      // RLS-restricted to the owner).
-      const { data, error } = await supabase
-        .from("booking_slots")
-        .select("court_id, start_time")
-        .eq("booking_date", date)
-        .eq("is_reserved", true);
+      const { data, error } = await supabase.rpc("get_reserved_slots", { p_date: date });
       if (error) throw error;
       return (data || []).map((s: any) => {
         const [h, m] = String(s.start_time).split(":").map(Number);
         const end = `${String((h + 1) % 24).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`;
-        return { court_id: s.court_id, start_time: s.start_time, end_time: end };
-      }) as Array<{ court_id: string; start_time: string; end_time: string }>;
+        return { court_id: s.court_id, start_time: s.start_time, end_time: end, status: s.status as "pending" | "paid" };
+      }) as Array<{ court_id: string; start_time: string; end_time: string; status: "pending" | "paid" }>;
     },
     enabled: !!date,
   });

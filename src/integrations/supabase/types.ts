@@ -303,6 +303,14 @@ export type Database = {
         Args: { p_date: string; p_items: Json; p_reference: string }
         Returns: string[]
       }
+      get_reserved_slots: {
+        Args: { p_date: string }
+        Returns: {
+          court_id: string
+          start_time: string
+          status: Database["public"]["Enums"]["booking_status"]
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
