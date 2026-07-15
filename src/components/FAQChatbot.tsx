@@ -66,7 +66,15 @@ export function FAQChatbot() {
           "hover:scale-105 transition-transform"
         )}
       >
-        {open ? <X className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}
+        {open ? (
+          <X className="h-6 w-6" />
+        ) : (
+          <img
+            src={picklebotIcon.url}
+            alt="PickleBot"
+            className="h-11 w-11 object-contain rounded-full"
+          />
+        )}
       </button>
 
       {/* Chat panel */}
@@ -80,8 +88,12 @@ export function FAQChatbot() {
         >
           {/* Header */}
           <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-primary text-primary-foreground">
-            <div className="h-9 w-9 rounded-full bg-primary-foreground/20 flex items-center justify-center">
-              <MessageCircle className="h-5 w-5" />
+            <div className="h-9 w-9 rounded-full bg-primary-foreground/20 flex items-center justify-center overflow-hidden">
+              <img
+                src={picklebotIcon.url}
+                alt="PickleBot"
+                className="h-9 w-9 object-contain"
+              />
             </div>
             <div className="flex-1 min-w-0">
               <div className="font-semibold text-sm">PickleBot</div>
