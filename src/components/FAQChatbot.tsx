@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { MessageCircle, X, Send, Loader2 } from "lucide-react";
+import { X, Send, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import picklebotIcon from "@/assets/picklebot-icon.png.asset.json";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
