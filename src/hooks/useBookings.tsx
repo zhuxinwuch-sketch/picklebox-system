@@ -43,16 +43,18 @@ export function useCreateBooking() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (booking: {
-      user_id: string;
       court_id: string;
       booking_date: string;
       start_time: string;
       end_time: string;
       total_amount: number;
     }) => {
+      // Derive user_id server-side from the session; never trust the client.
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData.user) throw authError ?? new Error("Not authenticated");
       const { data, error } = await supabase
         .from("bookings")
-        .insert(booking)
+        .insert({ ...booking, user_id: authData.user.id })
         .select("*, courts(name, description, price_per_hour)")
         .single();
       if (error) throw error;
@@ -69,14 +71,16 @@ export function useCreatePayment() {
   return useMutation({
     mutationFn: async (payment: {
       booking_id: string;
-      user_id: string;
       amount: number;
       payment_method: string;
       transaction_reference?: string;
     }) => {
+      // Derive user_id server-side from the session; never trust the client.
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData.user) throw authError ?? new Error("Not authenticated");
       const { data, error } = await supabase
         .from("payments")
-        .insert(payment)
+        .insert({ ...payment, user_id: authData.user.id })
         .select()
         .single();
       if (error) throw error;
