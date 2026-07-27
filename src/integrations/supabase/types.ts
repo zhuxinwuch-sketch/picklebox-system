@@ -183,6 +183,104 @@ export type Database = {
         }
         Relationships: []
       }
+      open_play_registrations: {
+        Row: {
+          id: string
+          payment_reference: string | null
+          payment_status: Database["public"]["Enums"]["payment_status"]
+          registered_at: string
+          session_id: string
+          status: Database["public"]["Enums"]["open_play_registration_status"]
+          updated_at: string
+          user_id: string
+          waitlist_position: number | null
+        }
+        Insert: {
+          id?: string
+          payment_reference?: string | null
+          payment_status?: Database["public"]["Enums"]["payment_status"]
+          registered_at?: string
+          session_id: string
+          status?: Database["public"]["Enums"]["open_play_registration_status"]
+          updated_at?: string
+          user_id: string
+          waitlist_position?: number | null
+        }
+        Update: {
+          id?: string
+          payment_reference?: string | null
+          payment_status?: Database["public"]["Enums"]["payment_status"]
+          registered_at?: string
+          session_id?: string
+          status?: Database["public"]["Enums"]["open_play_registration_status"]
+          updated_at?: string
+          user_id?: string
+          waitlist_position?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "open_play_registrations_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "open_play_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      open_play_sessions: {
+        Row: {
+          cancel_cutoff_hours: number
+          court_ids: string[]
+          created_at: string
+          created_by: string
+          end_time: string
+          id: string
+          max_players: number
+          notes: string | null
+          price_php: number
+          session_date: string
+          skill: Database["public"]["Enums"]["open_play_skill"]
+          start_time: string
+          status: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          cancel_cutoff_hours?: number
+          court_ids: string[]
+          created_at?: string
+          created_by: string
+          end_time: string
+          id?: string
+          max_players: number
+          notes?: string | null
+          price_php?: number
+          session_date: string
+          skill?: Database["public"]["Enums"]["open_play_skill"]
+          start_time: string
+          status?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cancel_cutoff_hours?: number
+          court_ids?: string[]
+          created_at?: string
+          created_by?: string
+          end_time?: string
+          id?: string
+          max_players?: number
+          notes?: string | null
+          price_php?: number
+          session_date?: string
+          skill?: Database["public"]["Enums"]["open_play_skill"]
+          start_time?: string
+          status?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number
@@ -286,9 +384,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_update_open_play_registration: {
+        Args: {
+          p_payment_status?: Database["public"]["Enums"]["payment_status"]
+          p_registration_id: string
+          p_status?: Database["public"]["Enums"]["open_play_registration_status"]
+        }
+        Returns: undefined
+      }
       cancel_booking_reservation: {
         Args: { p_booking_id: string }
         Returns: undefined
+      }
+      cancel_open_play_registration: {
+        Args: { p_registration_id: string }
+        Returns: Json
       }
       create_booking_reservation: {
         Args: {
@@ -302,6 +412,19 @@ export type Database = {
       create_bookings_atomic: {
         Args: { p_date: string; p_items: Json; p_reference: string }
         Returns: string[]
+      }
+      get_open_play_roster: {
+        Args: { p_session_id: string }
+        Returns: {
+          full_name: string
+          payment_reference: string
+          payment_status: Database["public"]["Enums"]["payment_status"]
+          registered_at: string
+          registration_id: string
+          status: Database["public"]["Enums"]["open_play_registration_status"]
+          user_id: string
+          waitlist_position: number
+        }[]
       }
       get_reserved_slots: {
         Args: { p_date: string }
@@ -318,6 +441,31 @@ export type Database = {
         }
         Returns: boolean
       }
+      list_open_play_sessions: {
+        Args: { p_from?: string; p_to?: string }
+        Returns: {
+          cancel_cutoff_hours: number
+          court_ids: string[]
+          end_time: string
+          id: string
+          max_players: number
+          my_status: Database["public"]["Enums"]["open_play_registration_status"]
+          my_waitlist_position: number
+          notes: string
+          price_php: number
+          registered_count: number
+          session_date: string
+          skill: Database["public"]["Enums"]["open_play_skill"]
+          start_time: string
+          status: string
+          title: string
+          waitlist_count: number
+        }[]
+      }
+      register_for_open_play: {
+        Args: { p_payment_reference?: string; p_session_id: string }
+        Returns: Json
+      }
       resolve_booking_reservation: {
         Args: {
           p_booking_id: string
@@ -329,6 +477,13 @@ export type Database = {
     Enums: {
       app_role: "admin" | "user"
       booking_status: "pending" | "paid" | "cancelled" | "completed"
+      open_play_registration_status:
+        | "registered"
+        | "waitlisted"
+        | "cancelled"
+        | "checked_in"
+        | "no_show"
+      open_play_skill: "all" | "2.5-3.0" | "3.5" | "4.0+"
       payment_status: "pending" | "completed" | "failed" | "refunded"
     }
     CompositeTypes: {
@@ -459,6 +614,14 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "user"],
       booking_status: ["pending", "paid", "cancelled", "completed"],
+      open_play_registration_status: [
+        "registered",
+        "waitlisted",
+        "cancelled",
+        "checked_in",
+        "no_show",
+      ],
+      open_play_skill: ["all", "2.5-3.0", "3.5", "4.0+"],
       payment_status: ["pending", "completed", "failed", "refunded"],
     },
   },
