@@ -15,6 +15,7 @@ import logo from "@/assets/logo.png";
 const navLinks = [
   { href: "/", label: "Home" },
   { href: "/courts", label: "Courts" },
+  { href: "/open-play", label: "Open Play" },
   { href: "/bookings", label: "My Bookings" },
 ];
 

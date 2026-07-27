@@ -7,6 +7,8 @@ import { AuthProvider } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Courts from "./pages/Courts";
+import OpenPlay from "./pages/OpenPlay";
+import AdminOpenPlay from "./pages/admin/AdminOpenPlay";
 import Checkout from "./pages/Checkout";
 import Confirmation from "./pages/Confirmation";
 import Bookings from "./pages/Bookings";
@@ -33,6 +35,8 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/courts" element={<Courts />} />
+            <Route path="/open-play" element={<ProtectedRoute><OpenPlay /></ProtectedRoute>} />
+            <Route path="/admin/open-play" element={<ProtectedRoute requireAdmin><AdminOpenPlay /></ProtectedRoute>} />
             <Route path="/auth" element={<Auth />} />
 
             {/* Auth-protected routes */}
