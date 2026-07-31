@@ -74,6 +74,7 @@ const Confirmation = () => {
                 <li>Once verified, your booking status will be updated to <strong className="text-foreground">Paid</strong></li>
                 <li>Your time slots stay reserved during verification</li>
                 <li>If denied, the slots will be released for others to book</li>
+                <li>Once paid, a <strong className="text-foreground">check-in QR code</strong> appears on My Bookings — show it at the court</li>
               </ul>
             </div>
           </div>

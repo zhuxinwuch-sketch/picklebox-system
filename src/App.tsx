@@ -19,6 +19,7 @@ import AdminCourts from "./pages/admin/AdminCourts";
 import AdminBookings from "./pages/admin/AdminBookings";
 import AdminPayments from "./pages/admin/AdminPayments";
 import AdminUsers from "./pages/admin/AdminUsers";
+import AdminCheckIn from "./pages/admin/AdminCheckIn";
 import AdminSettings from "./pages/admin/AdminSettings";
 import NotFound from "./pages/NotFound";
 import { FAQChatbot } from "@/components/FAQChatbot";
@@ -53,6 +54,7 @@ const App = () => (
             <Route path="/admin/bookings" element={<ProtectedRoute requireAdmin><AdminBookings /></ProtectedRoute>} />
             <Route path="/admin/payments" element={<ProtectedRoute requireAdmin><AdminPayments /></ProtectedRoute>} />
             <Route path="/admin/users" element={<ProtectedRoute requireAdmin><AdminUsers /></ProtectedRoute>} />
+            <Route path="/admin/check-in" element={<ProtectedRoute requireAdmin><AdminCheckIn /></ProtectedRoute>} />
             <Route path="/admin/settings" element={<ProtectedRoute requireAdmin><AdminSettings /></ProtectedRoute>} />
 
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

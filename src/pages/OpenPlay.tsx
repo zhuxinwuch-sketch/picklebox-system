@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { format, parseISO } from "date-fns";
-import { Users, Clock, Calendar, MapPin, Trophy, X } from "lucide-react";
+import { Users, Clock, Calendar, MapPin, Trophy, X, QrCode } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,7 @@ import {
   useCancelOpenPlayRegistration,
   type OpenPlaySessionRow,
 } from "@/hooks/useOpenPlay";
+import { QRCodeDialog } from "@/components/checkin/QRCodeDialog";
 
 const skillLabel: Record<string, string> = {
   all: "All Levels",
@@ -42,6 +43,7 @@ const OpenPlay = () => {
   const { data: courts } = useCourts();
   const [openSession, setOpenSession] = useState<OpenPlaySessionRow | null>(null);
   const [paymentRef, setPaymentRef] = useState("");
+  const [qrOpen, setQrOpen] = useState(false);
   const { toast } = useToast();
   const register = useRegisterOpenPlay();
   const cancel = useCancelOpenPlayRegistration();
@@ -296,6 +298,21 @@ const OpenPlay = () => {
                 )}
               </div>
 
+              {myRosterRow &&
+                (myRosterRow.payment_status === "completed" &&
+                ["registered", "checked_in"].includes(myRosterRow.status) ? (
+                  <Button variant="outline" className="w-full" onClick={() => setQrOpen(true)}>
+                    <QrCode className="h-4 w-4 mr-2" />
+                    {myRosterRow.checked_in_at ? "View QR (checked in)" : "Show check-in QR"}
+                  </Button>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    {myRosterRow.status === "waitlisted"
+                      ? "You'll get a check-in QR code once you move off the waitlist and your payment is approved."
+                      : "Your check-in QR code unlocks once the admin approves your payment."}
+                  </p>
+                ))}
+
               <DialogFooter>
                 {openSession.my_status ? (
                   <Button
@@ -318,6 +335,21 @@ const OpenPlay = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      <QRCodeDialog
+        open={qrOpen}
+        onOpenChange={setQrOpen}
+        kind="open_play"
+        id={myRosterRow?.registration_id}
+        title={openSession?.title || "Open Play"}
+        subtitle={
+          openSession
+            ? `${format(parseISO(openSession.session_date), "EEE, MMM d")} · ${openSession.start_time} – ${openSession.end_time}`
+            : undefined
+        }
+        referenceCode={myRosterRow?.payment_reference}
+        checkedInAt={myRosterRow?.checked_in_at}
+      />
 
       <Footer />
     </div>

@@ -5,7 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Calendar, Clock, MoreVertical, Eye, XCircle } from "lucide-react";
+import { Calendar, Clock, MoreVertical, Eye, XCircle, QrCode } from "lucide-react";
+import { useState } from "react";
+import { QRCodeDialog } from "@/components/checkin/QRCodeDialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useUserBookings } from "@/hooks/useBookings";
 import { useAuth } from "@/hooks/useAuth";
@@ -60,7 +62,9 @@ const Bookings = () => {
     (b) => b.status === "completed" || b.status === "cancelled"
   ) || [];
 
-  const BookingCard = ({ booking }: { booking: any }) => (
+  const BookingCard = ({ booking }: { booking: any }) => {
+    const [qrOpen, setQrOpen] = useState(false);
+    return (
     <Card className="hover:shadow-md transition-shadow duration-300">
       <CardContent className="p-5">
         <div className="flex items-start justify-between mb-4">
@@ -82,6 +86,30 @@ const Bookings = () => {
             <span>{booking.start_time} - {booking.end_time}</span>
           </div>
         </div>
+
+        {booking.status === "paid" && (
+          <div className="mb-4">
+            <Button variant="outline" size="sm" className="w-full" onClick={() => setQrOpen(true)}>
+              <QrCode className="h-4 w-4 mr-2" />
+              {booking.checked_in_at ? "View QR (checked in)" : "Show check-in QR"}
+            </Button>
+            <QRCodeDialog
+              open={qrOpen}
+              onOpenChange={setQrOpen}
+              kind="booking"
+              id={booking.id}
+              title={booking.courts?.name || "Court"}
+              subtitle={`${format(new Date(booking.booking_date), "EEE, MMM d")} · ${booking.start_time} – ${booking.end_time}`}
+              referenceCode={booking.reference_code}
+              checkedInAt={booking.checked_in_at}
+            />
+          </div>
+        )}
+        {booking.status === "pending" && (
+          <p className="mb-4 text-xs text-muted-foreground">
+            Your check-in QR code unlocks once the admin approves your payment.
+          </p>
+        )}
 
         <div className="flex items-center justify-between pt-4 border-t border-border">
           <div>
@@ -109,7 +137,8 @@ const Bookings = () => {
         </div>
       </CardContent>
     </Card>
-  );
+    );
+  };
 
   return (
     <div className="min-h-screen bg-background">
