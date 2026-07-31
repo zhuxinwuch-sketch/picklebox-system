@@ -76,9 +76,9 @@ export function QRCodeDialog({
               ) : (
                 <Badge variant="outline">Valid — not yet checked in</Badge>
               )}
-              <p className="text-center text-xs text-muted-foreground">
-                Code: <span className="font-mono">{token.slice(0, 8).toUpperCase()}</span> — staff
-                can type this if scanning fails.
+              <p className="text-center text-xs text-muted-foreground break-all">
+                Code: <span className="font-mono">{token}</span> — staff can type this if
+                scanning fails.
               </p>
             </>
           )}
