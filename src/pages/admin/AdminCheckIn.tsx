@@ -42,6 +42,8 @@ const AdminCheckIn = () => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [recent, setRecent] = useState<RecentEntry[]>([]);
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  // Keep the last scanned/typed token so Confirm uses exactly what was looked up.
+  const lastTokenRef = useRef<string | null>(null);
 
   const stopScanner = async () => {
     const scanner = scannerRef.current;
@@ -66,6 +68,7 @@ const AdminCheckIn = () => {
   const handleToken = async (token: string) => {
     const trimmed = token.trim();
     if (!trimmed) return;
+    lastTokenRef.current = trimmed;
     setErrorMsg(null);
     setResult(null);
     try {
@@ -105,9 +108,7 @@ const AdminCheckIn = () => {
   const confirmCheckIn = async () => {
     if (!result) return;
     try {
-      const token = manualCode.trim() || undefined;
-      // Re-use the same token that produced the lookup result.
-      const res = await perform.mutateAsync(lastTokenRef.current ?? token ?? "");
+      const res = await perform.mutateAsync(lastTokenRef.current ?? "");
       if (res.already) {
         toast({
           title: "Already checked in",
@@ -126,11 +127,8 @@ const AdminCheckIn = () => {
     }
   };
 
-  // Keep the last scanned/typed token so Confirm uses exactly what was looked up.
-  const lastTokenRef = useRef<string | null>(null);
   const submitManual = async (e: React.FormEvent) => {
     e.preventDefault();
-    lastTokenRef.current = manualCode.trim();
     await handleToken(manualCode);
   };
 
