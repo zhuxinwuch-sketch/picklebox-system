@@ -19,6 +19,7 @@ import AdminCourts from "./pages/admin/AdminCourts";
 import AdminBookings from "./pages/admin/AdminBookings";
 import AdminPayments from "./pages/admin/AdminPayments";
 import AdminUsers from "./pages/admin/AdminUsers";
+import AdminCheckIn from "./pages/admin/AdminCheckIn";
 import AdminSettings from "./pages/admin/AdminSettings";
 import NotFound from "./pages/NotFound";
 import { FAQChatbot } from "@/components/FAQChatbot";
