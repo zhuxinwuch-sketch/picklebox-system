@@ -100,11 +100,13 @@ export type Database = {
       bookings: {
         Row: {
           booking_date: string
+          checked_in_at: string | null
           court_id: string
           created_at: string
           end_time: string
           expires_at: string | null
           id: string
+          qr_token: string
           reference_code: string | null
           start_time: string
           status: Database["public"]["Enums"]["booking_status"]
@@ -114,11 +116,13 @@ export type Database = {
         }
         Insert: {
           booking_date: string
+          checked_in_at?: string | null
           court_id: string
           created_at?: string
           end_time: string
           expires_at?: string | null
           id?: string
+          qr_token?: string
           reference_code?: string | null
           start_time: string
           status?: Database["public"]["Enums"]["booking_status"]
@@ -128,11 +132,13 @@ export type Database = {
         }
         Update: {
           booking_date?: string
+          checked_in_at?: string | null
           court_id?: string
           created_at?: string
           end_time?: string
           expires_at?: string | null
           id?: string
+          qr_token?: string
           reference_code?: string | null
           start_time?: string
           status?: Database["public"]["Enums"]["booking_status"]
@@ -185,9 +191,11 @@ export type Database = {
       }
       open_play_registrations: {
         Row: {
+          checked_in_at: string | null
           id: string
           payment_reference: string | null
           payment_status: Database["public"]["Enums"]["payment_status"]
+          qr_token: string
           registered_at: string
           session_id: string
           status: Database["public"]["Enums"]["open_play_registration_status"]
@@ -196,9 +204,11 @@ export type Database = {
           waitlist_position: number | null
         }
         Insert: {
+          checked_in_at?: string | null
           id?: string
           payment_reference?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"]
+          qr_token?: string
           registered_at?: string
           session_id: string
           status?: Database["public"]["Enums"]["open_play_registration_status"]
@@ -207,9 +217,11 @@ export type Database = {
           waitlist_position?: number | null
         }
         Update: {
+          checked_in_at?: string | null
           id?: string
           payment_reference?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"]
+          qr_token?: string
           registered_at?: string
           session_id?: string
           status?: Database["public"]["Enums"]["open_play_registration_status"]
@@ -413,6 +425,10 @@ export type Database = {
         Args: { p_date: string; p_items: Json; p_reference: string }
         Returns: string[]
       }
+      get_my_qr_token: {
+        Args: { p_id: string; p_kind: string }
+        Returns: string
+      }
       get_open_play_roster: {
         Args: { p_session_id: string }
         Returns: {
@@ -462,6 +478,8 @@ export type Database = {
           waitlist_count: number
         }[]
       }
+      lookup_checkin: { Args: { p_token: string }; Returns: Json }
+      perform_checkin: { Args: { p_token: string }; Returns: Json }
       register_for_open_play: {
         Args: { p_payment_reference?: string; p_session_id: string }
         Returns: Json
