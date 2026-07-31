@@ -10,6 +10,7 @@ import {
   Menu,
   ChevronLeft,
   Trophy,
+  QrCode,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ const navItems = [
   { href: "/admin/courts", icon: MapPin, label: "Courts" },
   { href: "/admin/bookings", icon: Calendar, label: "Bookings" },
   { href: "/admin/open-play", icon: Trophy, label: "Open Play" },
+  { href: "/admin/check-in", icon: QrCode, label: "Check-In" },
   { href: "/admin/payments", icon: CreditCard, label: "Payments" },
   { href: "/admin/users", icon: Users, label: "Users" },
   { href: "/admin/settings", icon: Settings, label: "Settings" },
