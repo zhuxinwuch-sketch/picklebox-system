@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { format, parseISO } from "date-fns";
-import { Users, Clock, Calendar, MapPin, Trophy, X, QrCode } from "lucide-react";
+import { Users, Clock, Calendar, MapPin, Trophy, X, QrCode, CheckCircle2 } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
@@ -158,6 +158,11 @@ const OpenPlay = () => {
                           </p>
                         </div>
                         {mine === "registered" && <Badge>Registered</Badge>}
+                        {mine === "checked_in" && (
+                          <Badge className="bg-primary text-primary-foreground">
+                            <CheckCircle2 className="h-3 w-3 mr-1" /> Checked in
+                          </Badge>
+                        )}
                         {mine === "waitlisted" && (
                           <Badge variant="secondary">Waitlist #{s.my_waitlist_position}</Badge>
                         )}
@@ -297,6 +302,25 @@ const OpenPlay = () => {
                   </div>
                 )}
               </div>
+
+              {myRosterRow && (
+                <div className="text-sm">
+                  {myRosterRow.status === "cancelled" ? (
+                    <span className="inline-flex items-center gap-1.5 font-medium text-destructive">
+                      <X className="h-3.5 w-3.5" /> Cancelled
+                    </span>
+                  ) : myRosterRow.checked_in_at ? (
+                    <span className="inline-flex items-center gap-1.5 font-medium text-primary">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Checked in · {format(parseISO(myRosterRow.checked_in_at), "MMM d, p")}
+                    </span>
+                  ) : ["registered", "waitlisted"].includes(myRosterRow.status) ? (
+                    <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                      <Clock className="h-3.5 w-3.5" /> Not checked in yet
+                    </span>
+                  ) : null}
+                </div>
+              )}
 
               {myRosterRow &&
                 (myRosterRow.payment_status === "completed" &&

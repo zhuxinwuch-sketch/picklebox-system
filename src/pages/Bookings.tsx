@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Calendar, Clock, MoreVertical, Eye, XCircle, QrCode } from "lucide-react";
+import { Calendar, Clock, MoreVertical, Eye, XCircle, QrCode, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
 import { QRCodeDialog } from "@/components/checkin/QRCodeDialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -85,6 +85,23 @@ const Bookings = () => {
             <Clock className="h-4 w-4" />
             <span>{booking.start_time} - {booking.end_time}</span>
           </div>
+        </div>
+
+        <div className="mb-4">
+          {booking.status === "cancelled" ? (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-destructive">
+              <XCircle className="h-3.5 w-3.5" /> Cancelled
+            </span>
+          ) : booking.checked_in_at ? (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-primary">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Checked in · {format(new Date(booking.checked_in_at), "MMM d, p")}
+            </span>
+          ) : booking.status === "paid" ? (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <Clock className="h-3.5 w-3.5" /> Not checked in yet
+            </span>
+          ) : null}
         </div>
 
         {booking.status === "paid" && (
