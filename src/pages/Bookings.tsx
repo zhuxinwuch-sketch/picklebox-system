@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Calendar, Clock, MoreVertical, Eye, XCircle, QrCode } from "lucide-react";
+import { Calendar, Clock, MoreVertical, Eye, XCircle, QrCode, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
 import { QRCodeDialog } from "@/components/checkin/QRCodeDialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";

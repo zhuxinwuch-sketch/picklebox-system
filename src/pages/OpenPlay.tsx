@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { format, parseISO } from "date-fns";
-import { Users, Clock, Calendar, MapPin, Trophy, X, QrCode } from "lucide-react";
+import { Users, Clock, Calendar, MapPin, Trophy, X, QrCode, CheckCircle2 } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
