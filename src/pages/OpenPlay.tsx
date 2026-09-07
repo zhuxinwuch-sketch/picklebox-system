@@ -303,6 +303,25 @@ const OpenPlay = () => {
                 )}
               </div>
 
+              {myRosterRow && (
+                <div className="text-sm">
+                  {myRosterRow.status === "cancelled" ? (
+                    <span className="inline-flex items-center gap-1.5 font-medium text-destructive">
+                      <X className="h-3.5 w-3.5" /> Cancelled
+                    </span>
+                  ) : myRosterRow.checked_in_at ? (
+                    <span className="inline-flex items-center gap-1.5 font-medium text-primary">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Checked in · {format(parseISO(myRosterRow.checked_in_at), "MMM d, p")}
+                    </span>
+                  ) : ["registered", "waitlisted"].includes(myRosterRow.status) ? (
+                    <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                      <Clock className="h-3.5 w-3.5" /> Not checked in yet
+                    </span>
+                  ) : null}
+                </div>
+              )}
+
               {myRosterRow &&
                 (myRosterRow.payment_status === "completed" &&
                 ["registered", "checked_in"].includes(myRosterRow.status) ? (
