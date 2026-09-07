@@ -87,6 +87,23 @@ const Bookings = () => {
           </div>
         </div>
 
+        <div className="mb-4">
+          {booking.status === "cancelled" ? (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-destructive">
+              <XCircle className="h-3.5 w-3.5" /> Cancelled
+            </span>
+          ) : booking.checked_in_at ? (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-primary">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Checked in · {format(new Date(booking.checked_in_at), "MMM d, p")}
+            </span>
+          ) : booking.status === "paid" ? (
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <Clock className="h-3.5 w-3.5" /> Not checked in yet
+            </span>
+          ) : null}
+        </div>
+
         {booking.status === "paid" && (
           <div className="mb-4">
             <Button variant="outline" size="sm" className="w-full" onClick={() => setQrOpen(true)}>

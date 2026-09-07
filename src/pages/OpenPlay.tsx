@@ -158,6 +158,11 @@ const OpenPlay = () => {
                           </p>
                         </div>
                         {mine === "registered" && <Badge>Registered</Badge>}
+                        {mine === "checked_in" && (
+                          <Badge className="bg-primary text-primary-foreground">
+                            <CheckCircle2 className="h-3 w-3 mr-1" /> Checked in
+                          </Badge>
+                        )}
                         {mine === "waitlisted" && (
                           <Badge variant="secondary">Waitlist #{s.my_waitlist_position}</Badge>
                         )}
