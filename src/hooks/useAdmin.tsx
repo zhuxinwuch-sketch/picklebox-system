@@ -57,3 +57,76 @@ export function useAdminPayments() {
     },
   });
 }
+
+export interface TodayOpenPlaySession {
+  id: string;
+  title: string | null;
+  start_time: string;
+  end_time: string;
+  skill: string;
+  max_players: number;
+  status: string;
+  registered: number;
+  waitlisted: number;
+  checked_in: number;
+}
+
+/** Today's open play sessions with live roster counts. */
+export function useTodayOpenPlay() {
+  return useQuery({
+    queryKey: ["admin", "today", "open-play"],
+    queryFn: async (): Promise<TodayOpenPlaySession[]> => {
+      const today = new Date().toISOString().slice(0, 10);
+      const { data: sessions, error } = await supabase
+        .from("open_play_sessions")
+        .select("*")
+        .eq("session_date", today)
+        .order("start_time", { ascending: true });
+      if (error) throw error;
+      const rows = sessions ?? [];
+      if (rows.length === 0) return [];
+      const { data: regs } = await supabase
+        .from("open_play_registrations")
+        .select("session_id, status, checked_in_at")
+        .in("session_id", rows.map((s: any) => s.id));
+      return rows.map((s: any) => {
+        const mine = (regs ?? []).filter((r: any) => r.session_id === s.id);
+        return {
+          id: s.id,
+          title: s.title,
+          start_time: s.start_time,
+          end_time: s.end_time,
+          skill: s.skill,
+          max_players: s.max_players,
+          status: s.status,
+          registered: mine.filter((r: any) => r.status === "registered" || r.status === "checked_in").length,
+          waitlisted: mine.filter((r: any) => r.status === "waitlisted").length,
+          checked_in: mine.filter((r: any) => !!r.checked_in_at).length,
+        };
+      });
+    },
+  });
+}
+
+/** Today's court bookings including check-in state and player name. */
+export function useTodayBookings() {
+  return useQuery({
+    queryKey: ["admin", "today", "bookings"],
+    queryFn: async () => {
+      const today = new Date().toISOString().slice(0, 10);
+      const { data, error } = await supabase
+        .from("bookings")
+        .select("*, courts(name)")
+        .eq("booking_date", today)
+        .order("start_time", { ascending: true });
+      if (error) throw error;
+      const rows = data ?? [];
+      const userIds = [...new Set(rows.map((b: any) => b.user_id))];
+      const { data: profiles } = userIds.length
+        ? await supabase.from("profiles").select("user_id, full_name").in("user_id", userIds)
+        : { data: [] as any[] };
+      const map = new Map((profiles ?? []).map((p: any) => [p.user_id, p]));
+      return rows.map((b: any) => ({ ...b, full_name: map.get(b.user_id)?.full_name || "Unknown" }));
+    },
+  });
+}
